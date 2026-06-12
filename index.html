@@ -1,0 +1,2579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0a0c12">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Veridia">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>Veridia Legends</title>
+<style>
+:root{
+ --bg:#0a0c12; --glass:rgba(16,22,32,.72); --glass2:rgba(22,30,42,.85);
+ --line:rgba(232,196,58,.45); --gold:#e8c43a; --ink:#eef0ec; --sub:#9fb2a6;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+textarea,input{user-select:text;-webkit-user-select:text}
+html,body{height:100%;background:var(--bg)}
+body{display:flex;align-items:stretch;justify-content:center;overscroll-behavior:none;touch-action:manipulation;
+ font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+ padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+#shell{width:min(100vw,520px);height:100%;display:flex;flex-direction:column;gap:8px;padding:8px 8px 6px}
+/* ---- screen ---- */
+#screenwrap{position:relative;width:100%;aspect-ratio:5/4;background:#100c18;border-radius:16px;overflow:hidden;
+ box-shadow:0 0 0 1px rgba(232,196,58,.3),0 12px 40px rgba(0,0,0,.65)}
+canvas#screen{position:absolute;inset:0;width:100%;height:100%}
+#mapname{position:absolute;top:10px;left:10px;background:var(--glass);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+ color:var(--ink);font-size:12px;font-weight:600;letter-spacing:.08em;padding:5px 12px;border-radius:99px;
+ border:1px solid rgba(255,255,255,.12);pointer-events:none;z-index:3}
+/* ---- dialog ---- */
+#dlg{display:none;position:absolute;left:8px;right:8px;bottom:8px;background:var(--glass2);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+ border:1px solid var(--line);border-radius:14px;color:var(--ink);padding:13px 15px;font-size:14px;line-height:1.55;z-index:8;min-height:64px;white-space:pre-line}
+#dlg .dlgmore{position:absolute;right:11px;bottom:6px;color:var(--gold);animation:bob 1s infinite}
+@keyframes bob{50%{transform:translateY(2px)}}
+.choicebox{display:flex;flex-direction:column;gap:7px}
+.choicebox button{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.16);color:var(--ink);font:inherit;font-size:14px;padding:10px 12px;border-radius:10px;text-align:left}
+.choicebox button:active{background:rgba(232,196,58,.25)}
+/* ---- panel ---- */
+#panel{display:none;position:absolute;inset:8px;background:var(--glass2);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+ border:1px solid var(--line);border-radius:16px;color:var(--ink);z-index:9;flex-direction:column;padding:12px}
+#panel .ptitle{font-size:12px;font-weight:700;letter-spacing:.2em;color:var(--gold);padding:2px 4px 10px;text-transform:uppercase}
+#panel .plist{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:6px;touch-action:pan-y}
+#panel .pitem{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);
+ color:var(--ink);font:inherit;font-size:14px;padding:10px 12px;border-radius:11px;text-align:left}
+#panel .pitem:disabled{opacity:.4}
+#panel .pitem:active{background:rgba(232,196,58,.22)}
+#panel .pmain{flex:1;font-weight:600}
+#panel .psub{font-size:11px;color:var(--sub)}
+#panel .picon{width:28px;height:28px;image-rendering:pixelated;flex:none}
+#panel .pback,#bmoves .backbtn{margin-top:8px;background:rgba(232,196,58,.14);border:1px solid var(--line);color:var(--gold);
+ font:inherit;font-size:12px;font-weight:700;letter-spacing:.12em;padding:11px;border-radius:11px}
+/* ---- battle ---- */
+#battle{display:none;position:absolute;inset:0;background:linear-gradient(#9ecdea 55%,#cfe6b0 55%);z-index:7;flex-direction:column}
+#bfoename{position:absolute;top:8px;left:50%;transform:translateX(-50%);font-size:11px;font-weight:700;letter-spacing:.1em;color:#1c2830;
+ background:rgba(255,255,255,.78);backdrop-filter:blur(6px);padding:4px 14px;border-radius:99px;z-index:2}
+#bfield{flex:1;position:relative}
+#foespr{position:absolute;right:8%;top:11%}
+#allyspr{position:absolute;left:7%;bottom:3%}
+#foespr canvas,#allyspr canvas{width:118px;height:118px;image-rendering:pixelated;filter:drop-shadow(0 5px 4px rgba(0,0,0,.28))}
+.plat{position:absolute;width:148px;height:38px;border-radius:50%;background:rgba(0,0,0,.16);filter:blur(1px)}
+#foeplat{right:4%;top:calc(11% + 86px)}
+#allyplat{left:3%;bottom:0%}
+.bpanel{position:absolute;background:var(--glass2);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+ border:1px solid var(--line);border-radius:13px;color:var(--ink);padding:8px 11px;width:47%;min-width:160px;box-shadow:0 4px 14px rgba(0,0,0,.3)}
+#foepanel{left:3.5%;top:8%}
+#allypanel{right:3.5%;bottom:5%}
+.bpname{font-size:13px;font-weight:700;display:flex;justify-content:space-between;gap:6px;margin-bottom:5px}
+.bplv{color:var(--gold);font-weight:700}
+.stat-tag{font-size:10px;background:#7a44a0;padding:1px 6px;border-radius:99px;font-weight:600}
+.hpwrap{height:8px;background:rgba(0,0,0,.45);border-radius:99px;overflow:hidden}
+.hpfill{height:100%;border-radius:99px;transition:width .6s ease}
+.bphp{font-size:10px;color:var(--sub);text-align:right;margin-top:3px;font-variant-numeric:tabular-nums}
+.xpwrap{height:4px;background:rgba(0,0,0,.45);border-radius:99px;margin-top:4px;overflow:hidden}
+.xpfill{height:100%;background:linear-gradient(90deg,#4aa2e8,#7ac4ff);border-radius:99px}
+#btext{display:none;background:var(--glass2);backdrop-filter:blur(12px);border-top:1px solid var(--line);color:var(--ink);
+ min-height:64px;padding:13px 15px;font-size:14px;line-height:1.5}
+#btext.blink::after{content:' \25BC';color:var(--gold)}
+#bmenu{display:none;grid-template-columns:1fr 1fr 1fr;grid-template-areas:'f f f' 'b p r';gap:6px;
+ background:rgba(10,14,20,.92);backdrop-filter:blur(12px);border-top:1px solid var(--line);padding:8px;min-height:64px}
+#bmenu button{font:inherit;color:#fff;font-weight:800;letter-spacing:.14em;border-radius:12px;padding:11px 6px;
+ border:1px solid rgba(0,0,0,.45);box-shadow:inset 0 2px 0 rgba(255,255,255,.28),inset 0 -3px 0 rgba(0,0,0,.28),0 3px 8px rgba(0,0,0,.3);
+ text-shadow:0 1px 2px rgba(0,0,0,.45)}
+#bmenu button:nth-child(1){grid-area:f;background:linear-gradient(#f08054,#c2452e);font-size:16px;letter-spacing:.3em}
+#bmenu button:nth-child(2){grid-area:b;background:linear-gradient(#ecc454,#b8902a);font-size:11px}
+#bmenu button:nth-child(3){grid-area:p;background:linear-gradient(#72c468,#3e8c44);font-size:11px}
+#bmenu button:nth-child(4){grid-area:r;background:linear-gradient(#5ea2e6,#3a6ab0);font-size:11px}
+#bmenu button:active{transform:translateY(1px);box-shadow:inset 0 2px 5px rgba(0,0,0,.45)}
+#bmoves{display:none;grid-template-columns:1fr 1fr;gap:6px;background:rgba(10,14,20,.92);backdrop-filter:blur(12px);
+ border-top:1px solid var(--line);padding:8px;min-height:64px}
+#bmoves button{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);color:var(--ink);font:inherit;font-size:13px;font-weight:600;
+ padding:10px;border-radius:11px;display:flex;justify-content:space-between;align-items:center;gap:6px}
+#bmoves button:active{background:rgba(232,196,58,.22)}
+#bmoves button:disabled{opacity:.4}
+#bmoves small{font-size:10px;font-weight:700}
+#bmoves .backbtn{grid-column:1/-1;margin-top:0}
+/* ---- battle fx ---- */
+#fxflash{position:absolute;inset:0;z-index:12;pointer-events:none;opacity:0;background:#000}
+#fxflash.go{animation:bflash .56s steps(1) forwards}
+@keyframes bflash{0%{opacity:0}12%{opacity:1;background:#fff}25%{opacity:0}37%{opacity:1;background:#000}50%{opacity:0}62%{opacity:1;background:#fff}78%{opacity:1;background:#000}100%{opacity:1;background:#000}}
+#foespr.enterR{animation:enterR .44s ease-out}
+@keyframes enterR{from{transform:translateX(150px);opacity:0}to{transform:none;opacity:1}}
+.popOut{animation:popOut .42s cubic-bezier(.2,1.5,.4,1)}
+@keyframes popOut{from{transform:scale(0);opacity:0}55%{opacity:1}to{transform:none}}
+.lungeA{animation:lungeA .24s ease-out}
+@keyframes lungeA{30%{transform:translate(17px,-11px)}100%{transform:none}}
+.lungeF{animation:lungeF .24s ease-out}
+@keyframes lungeF{30%{transform:translate(-17px,11px)}100%{transform:none}}
+.hitflash{animation:hitfl .38s steps(1)}
+@keyframes hitfl{0%,40%,80%{opacity:.15}20%,60%,100%{opacity:1}}
+.faintDrop{animation:faintDrop .46s ease-in forwards}
+@keyframes faintDrop{to{transform:translateY(56px);opacity:0}}
+.catchShrink{animation:catchShrink .4s ease-in forwards}
+@keyframes catchShrink{to{transform:translateY(-20px) scale(.07);opacity:.85}}
+.popBack{animation:popBack .28s ease-out}
+@keyframes popBack{from{transform:scale(.07);opacity:.4}to{transform:none;opacity:1}}
+/* ---- title ---- */
+#title{display:none;position:absolute;inset:0;background:radial-gradient(ellipse at 50% 28%,#21442e,#0a0c12 78%);z-index:10;
+ flex-direction:column;align-items:center;justify-content:center;gap:16px;color:var(--ink)}
+#title h1{font-size:34px;font-weight:900;letter-spacing:.22em;text-align:center;line-height:1.25;
+ background:linear-gradient(#f6e09a,#c9982c);-webkit-background-clip:text;background-clip:text;color:transparent;
+ filter:drop-shadow(0 3px 8px rgba(232,196,58,.35))}
+#title .sub{font-size:11px;font-weight:700;letter-spacing:.4em;color:var(--sub)}
+#titlebtns{display:flex;flex-direction:column;gap:9px;width:74%}
+#titlebtns button{background:rgba(255,255,255,.07);border:1px solid var(--line);color:var(--ink);font:inherit;font-size:14px;font-weight:700;
+ letter-spacing:.06em;padding:13px;border-radius:13px;backdrop-filter:blur(8px)}
+#titlebtns button:active{background:rgba(232,196,58,.25)}
+#nameinput{display:none;width:74%;background:rgba(0,0,0,.4);border:1px solid var(--line);color:var(--ink);font:inherit;font-size:15px;
+ padding:11px;border-radius:13px;text-align:center}
+#title .hint{font-size:10px;color:#5c6e62;letter-spacing:.14em}
+/* ---- controls ---- */
+#controls{flex:1;display:flex;align-items:center;justify-content:space-between;padding:4px 14px;min-height:158px;
+ background:var(--glass);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+ border:1px solid rgba(255,255,255,.09);border-radius:18px}
+#dpad{position:relative;width:132px;height:132px;touch-action:none}
+.dbtn{position:absolute;touch-action:none;width:44px;height:44px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.14);
+ color:#cfe0d4;font-size:14px;display:flex;align-items:center;justify-content:center}
+.dbtn.on{background:rgba(232,196,58,.4);transform:scale(.95)}
+.dbtn[data-dir=up]{left:44px;top:0;border-radius:12px 12px 4px 4px}
+.dbtn[data-dir=down]{left:44px;bottom:0;border-radius:4px 4px 12px 12px}
+.dbtn[data-dir=left]{left:0;top:44px;border-radius:12px 4px 4px 12px}
+.dbtn[data-dir=right]{right:0;top:44px;border-radius:4px 12px 12px 4px}
+#dpad .hub{position:absolute;left:44px;top:44px;width:44px;height:44px;background:rgba(255,255,255,.06)}
+#btnStart{touch-action:none;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);color:var(--sub);
+ font:inherit;font-size:10px;font-weight:800;letter-spacing:.3em;padding:9px 20px;border-radius:99px}
+#btnStart:active{background:rgba(232,196,58,.3);color:var(--ink)}
+#abwrap{display:flex;align-items:center}
+#ab{display:flex;gap:16px;transform:rotate(-12deg)}
+.rbtn{touch-action:none;width:62px;height:62px;border-radius:50%;color:#241c08;font:inherit;font-weight:900;font-size:18px;
+ background:radial-gradient(circle at 34% 28%,#f4dc94,#c9982c);border:1px solid rgba(0,0,0,.4);
+ box-shadow:0 5px 0 #6e5418,0 8px 16px rgba(0,0,0,.4)}
+.rbtn:active{transform:translateY(4px);box-shadow:0 1px 0 #6e5418}
+#btnB{margin-top:26px}
+@media (max-height:700px){#controls{min-height:132px}#dpad{width:114px;height:114px}.dbtn{width:38px;height:38px}
+ .dbtn[data-dir=up],.dbtn[data-dir=down]{left:38px}.dbtn[data-dir=left],.dbtn[data-dir=right]{top:38px}
+ #dpad .hub{left:38px;top:38px;width:38px;height:38px}.rbtn{width:54px;height:54px;font-size:16px}}
+</style>
+</head>
+<body>
+<div id="shell">
+ <div id="screenwrap">
+  <canvas id="screen" width="720" height="576"></canvas>
+  <div id="mapname"></div>
+  <div id="battle">
+   <div id="bfoename"></div>
+   <div id="bfield">
+    <div id="foeplat" class="plat"></div>
+    <div id="allyplat" class="plat"></div>
+    <div id="foepanel" class="bpanel"></div>
+    <div id="foespr"></div>
+    <div id="allyspr"></div>
+    <div id="allypanel" class="bpanel"></div>
+   </div>
+   <div id="btext"></div>
+   <div id="bmenu">
+    <button>FIGHT</button><button>BAG</button><button>BEASTS</button><button>RUN</button>
+   </div>
+   <div id="bmoves"></div>
+  </div>
+  <div id="panel"></div>
+  <div id="dlg"></div>
+  <div id="fxflash"></div>
+  <div id="title">
+   <h1>VERIDIA<br>LEGENDS</h1>
+   <div class="sub">103 BEASTS &middot; 18 TYPES &middot; 9 BIOMES</div>
+   <input id="nameinput" maxlength="10" placeholder="Enter your name" autocomplete="off">
+   <div id="titlebtns"></div>
+   <div class="hint">D-PAD WALK &middot; A TALK &middot; B RUN/BACK &middot; START MENU</div>
+  </div>
+ </div>
+ <div id="controls">
+  <div id="dpad">
+   <button class="dbtn" data-dir="up">&#9650;</button>
+   <button class="dbtn" data-dir="left">&#9664;</button>
+   <div class="hub"></div>
+   <button class="dbtn" data-dir="right">&#9654;</button>
+   <button class="dbtn" data-dir="down">&#9660;</button>
+  </div>
+  <button id="btnStart">START</button>
+  <div id="abwrap">
+   <div id="ab">
+    <button class="rbtn" id="btnB">B</button>
+    <button class="rbtn" id="btnA">A</button>
+   </div>
+  </div>
+ </div>
+</div>
+<script>
+/* ============================================================
+   VERIDIA LEGENDS — an original monster-taming RPG
+   All creatures, names, characters and region are original.
+   ============================================================ */
+'use strict';
+
+/* ---------- utils ---------- */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function rint(rng,a,b){return a+Math.floor(rng()*(b-a+1))}
+function pick(rng,arr){return arr[Math.floor(rng()*arr.length)]}
+function clamp(v,a,b){return v<a?a:v>b?b:v}
+
+/* ---------- types ---------- */
+const TYPE_COLORS={Normal:'#9aa07a',Fire:'#e8703a',Water:'#5a8fd8',Grass:'#6ab84f',Electric:'#e8c43a',Ice:'#8fd0d0',Fighting:'#b04438',Poison:'#9a52a8',Ground:'#cfa860',Flying:'#9a90d8',Psychic:'#e06090',Bug:'#9aa832',Rock:'#a89048',Ghost:'#705898',Dragon:'#6a50c8',Dark:'#5a4a42',Steel:'#9aa0b8',Fairy:'#e8a0c8'};
+const CHART={
+ Normal:{Rock:.5,Steel:.5,Ghost:0},
+ Fire:{Grass:2,Ice:2,Bug:2,Steel:2,Fire:.5,Water:.5,Rock:.5,Dragon:.5},
+ Water:{Fire:2,Ground:2,Rock:2,Water:.5,Grass:.5,Dragon:.5},
+ Grass:{Water:2,Ground:2,Rock:2,Fire:.5,Grass:.5,Poison:.5,Flying:.5,Bug:.5,Dragon:.5,Steel:.5},
+ Electric:{Water:2,Flying:2,Electric:.5,Grass:.5,Dragon:.5,Ground:0},
+ Ice:{Grass:2,Ground:2,Flying:2,Dragon:2,Fire:.5,Water:.5,Ice:.5,Steel:.5},
+ Fighting:{Normal:2,Ice:2,Rock:2,Dark:2,Steel:2,Poison:.5,Flying:.5,Psychic:.5,Bug:.5,Fairy:.5,Ghost:0},
+ Poison:{Grass:2,Fairy:2,Poison:.5,Ground:.5,Rock:.5,Ghost:.5,Steel:0},
+ Ground:{Fire:2,Electric:2,Poison:2,Rock:2,Steel:2,Grass:.5,Bug:.5,Flying:0},
+ Flying:{Grass:2,Fighting:2,Bug:2,Electric:.5,Rock:.5,Steel:.5},
+ Psychic:{Fighting:2,Poison:2,Psychic:.5,Steel:.5,Dark:0},
+ Bug:{Grass:2,Psychic:2,Dark:2,Fire:.5,Fighting:.5,Poison:.5,Flying:.5,Ghost:.5,Steel:.5,Fairy:.5},
+ Rock:{Fire:2,Ice:2,Flying:2,Bug:2,Fighting:.5,Ground:.5,Steel:.5},
+ Ghost:{Psychic:2,Ghost:2,Dark:.5,Normal:0},
+ Dragon:{Dragon:2,Steel:.5,Fairy:0},
+ Dark:{Psychic:2,Ghost:2,Fighting:.5,Dark:.5,Fairy:.5},
+ Steel:{Ice:2,Rock:2,Fairy:2,Fire:.5,Water:.5,Electric:.5,Steel:.5},
+ Fairy:{Fighting:2,Dragon:2,Dark:2,Fire:.5,Poison:.5,Steel:.5}
+};
+function effMult(mt,defTypes){let m=1;for(const t of defTypes){const row=CHART[mt];if(row&&row[t]!==undefined)m*=row[t];}return m}
+
+/* ---------- moves ----------
+   n name, t type, c category P/S/X, p power, a accuracy, pp,
+   prio, st:[status,chance%], chg:[[stat,delta,'self'|'foe']], heal, drain */
+const MOVES={
+ tackle:{n:'Tackle',t:'Normal',c:'P',p:40,a:100,pp:35},
+ scratch:{n:'Scratch',t:'Normal',c:'P',p:40,a:100,pp:35},
+ quickstrike:{n:'Quick Strike',t:'Normal',c:'P',p:40,a:100,pp:30,prio:1},
+ slam:{n:'Slam',t:'Normal',c:'P',p:80,a:75,pp:20},
+ hyperrush:{n:'Hyper Rush',t:'Normal',c:'P',p:90,a:90,pp:15},
+ growl:{n:'Growl',t:'Normal',c:'X',a:100,pp:40,chg:[['atk',-1,'foe']]},
+ harden:{n:'Harden',t:'Normal',c:'X',pp:30,chg:[['def',1,'self']]},
+ screech:{n:'Screech',t:'Normal',c:'X',a:85,pp:20,chg:[['def',-2,'foe']]},
+ mend:{n:'Mend',t:'Normal',c:'X',pp:10,heal:.5},
+ ember:{n:'Ember',t:'Fire',c:'S',p:40,a:100,pp:25,st:['BRN',10]},
+ flamerush:{n:'Flame Rush',t:'Fire',c:'P',p:70,a:100,pp:20,st:['BRN',10]},
+ blazeburst:{n:'Blaze Burst',t:'Fire',c:'S',p:95,a:100,pp:10,st:['BRN',10]},
+ tidaljab:{n:'Tidal Jab',t:'Water',c:'P',p:40,a:100,pp:25,prio:1},
+ hydropulse:{n:'Hydro Pulse',t:'Water',c:'S',p:60,a:100,pp:20},
+ tidalwave:{n:'Tidal Wave',t:'Water',c:'S',p:90,a:100,pp:12},
+ hydroburst:{n:'Hydro Burst',t:'Water',c:'S',p:110,a:80,pp:5},
+ vinelash:{n:'Vine Lash',t:'Grass',c:'P',p:45,a:100,pp:25},
+ leafcutter:{n:'Leaf Cutter',t:'Grass',c:'P',p:60,a:95,pp:20},
+ petalstorm:{n:'Petal Storm',t:'Grass',c:'S',p:90,a:100,pp:12},
+ sleepspore:{n:'Sleep Spore',t:'Grass',c:'X',a:75,pp:15,st:['SLP',100]},
+ leechdrain:{n:'Leech Drain',t:'Grass',c:'S',p:45,a:100,pp:20,drain:.5},
+ spark:{n:'Spark',t:'Electric',c:'S',p:40,a:100,pp:25,st:['PAR',10]},
+ voltlash:{n:'Volt Lash',t:'Electric',c:'P',p:65,a:100,pp:20,st:['PAR',10]},
+ thundercrash:{n:'Thunder Crash',t:'Electric',c:'S',p:95,a:100,pp:10,st:['PAR',10]},
+ staticwave:{n:'Static Wave',t:'Electric',c:'X',a:90,pp:20,st:['PAR',100]},
+ frostnip:{n:'Frost Nip',t:'Ice',c:'S',p:40,a:100,pp:25,st:['FRZ',10]},
+ icelance:{n:'Ice Lance',t:'Ice',c:'P',p:65,a:100,pp:20},
+ glacialstorm:{n:'Glacial Storm',t:'Ice',c:'S',p:110,a:70,pp:5,st:['FRZ',10]},
+ jab:{n:'Jab',t:'Fighting',c:'P',p:45,a:100,pp:25},
+ powerkick:{n:'Power Kick',t:'Fighting',c:'P',p:75,a:100,pp:15},
+ titanfist:{n:'Titan Fist',t:'Fighting',c:'P',p:100,a:85,pp:8},
+ train:{n:'Train',t:'Fighting',c:'X',pp:20,chg:[['atk',1,'self'],['def',1,'self']]},
+ toxicsting:{n:'Toxic Sting',t:'Poison',c:'P',p:40,a:100,pp:25,st:['PSN',20]},
+ venomblast:{n:'Venom Blast',t:'Poison',c:'S',p:85,a:100,pp:10,st:['PSN',30]},
+ toxin:{n:'Toxin',t:'Poison',c:'X',a:90,pp:15,st:['PSN',100]},
+ mudshot:{n:'Mud Shot',t:'Ground',c:'P',p:55,a:95,pp:20},
+ quakepulse:{n:'Quake Pulse',t:'Ground',c:'P',p:80,a:100,pp:12},
+ seismicslam:{n:'Seismic Slam',t:'Ground',c:'P',p:100,a:100,pp:8},
+ gust:{n:'Gust',t:'Flying',c:'S',p:40,a:100,pp:30},
+ wingstrike:{n:'Wing Strike',t:'Flying',c:'P',p:60,a:100,pp:25},
+ skydive:{n:'Sky Dive',t:'Flying',c:'P',p:85,a:95,pp:12},
+ mindjab:{n:'Mind Jab',t:'Psychic',c:'S',p:50,a:100,pp:25},
+ psybeam:{n:'Psy Beam',t:'Psychic',c:'S',p:70,a:100,pp:18},
+ mindcrush:{n:'Mind Crush',t:'Psychic',c:'S',p:90,a:100,pp:10},
+ calmfocus:{n:'Calm Focus',t:'Psychic',c:'X',pp:20,chg:[['spa',1,'self'],['spd',1,'self']]},
+ bugbite:{n:'Bug Bite',t:'Bug',c:'P',p:50,a:100,pp:25},
+ swarmstrike:{n:'Swarm Strike',t:'Bug',c:'P',p:80,a:100,pp:15},
+ rockthrow:{n:'Rock Throw',t:'Rock',c:'P',p:50,a:90,pp:20},
+ stonespike:{n:'Stone Spike',t:'Rock',c:'P',p:95,a:85,pp:8},
+ shadowjab:{n:'Shadow Jab',t:'Ghost',c:'P',p:45,a:100,pp:25},
+ hexpulse:{n:'Hex Pulse',t:'Ghost',c:'S',p:55,a:100,pp:20},
+ phantomstrike:{n:'Phantom Strike',t:'Ghost',c:'P',p:75,a:100,pp:15},
+ spiritburst:{n:'Spirit Burst',t:'Ghost',c:'S',p:95,a:100,pp:10},
+ drakeclaw:{n:'Drake Claw',t:'Dragon',c:'P',p:70,a:100,pp:18},
+ drakeroar:{n:'Drake Roar',t:'Dragon',c:'S',p:85,a:100,pp:12},
+ drakedance:{n:'Drake Dance',t:'Dragon',c:'X',pp:20,chg:[['atk',1,'self'],['spe',1,'self']]},
+ sovereignblast:{n:'Sovereign Blast',t:'Dragon',c:'S',p:120,a:90,pp:5},
+ bite:{n:'Bite',t:'Dark',c:'P',p:60,a:100,pp:25,st:['FLN',30]},
+ duskslash:{n:'Dusk Slash',t:'Dark',c:'P',p:70,a:100,pp:18},
+ umbralwave:{n:'Umbral Wave',t:'Dark',c:'S',p:80,a:100,pp:15},
+ ironclaw:{n:'Iron Claw',t:'Steel',c:'P',p:50,a:95,pp:25},
+ steelram:{n:'Steel Ram',t:'Steel',c:'P',p:80,a:100,pp:15},
+ chromeblast:{n:'Chrome Blast',t:'Steel',c:'S',p:80,a:100,pp:15}
+};
+
+/* ---------- species ----------
+   n name, t types, b [hp,atk,def,spa,spd,spe], cr catch rate,
+   bx base exp, ev [toId, level], ls learnset [[lv,move]], a archetype, h hue-seed */
+const SPECIES=[null,
+ {n:'Sproutle',t:['Grass'],b:[45,49,50,45,55,46],cr:45,bx:62,ev:[2,16],a:'quad',h:1,
+  ls:[[1,'tackle'],[1,'growl'],[6,'vinelash'],[11,'leechdrain'],[16,'leafcutter'],[22,'sleepspore'],[28,'petalstorm'],[36,'hyperrush']],
+  dx:'A timid seedling beast. The bulb on its back blooms when it trusts its tamer.'},
+ {n:'Thickail',t:['Grass'],b:[60,64,68,60,70,60],cr:45,bx:142,ev:[3,34],a:'quad',h:1,
+  ls:[[1,'tackle'],[1,'growl'],[6,'vinelash'],[11,'leechdrain'],[16,'leafcutter'],[22,'sleepspore'],[28,'petalstorm'],[36,'hyperrush']],
+  dx:'Its tail thickens into living bark. It can sleep standing in a forest unnoticed.'},
+ {n:'Verdrake',t:['Grass','Dragon'],b:[80,86,88,82,90,76],cr:45,bx:236,ev:null,a:'quad',h:1,
+  ls:[[1,'tackle'],[1,'growl'],[6,'vinelash'],[11,'leechdrain'],[16,'leafcutter'],[22,'sleepspore'],[28,'petalstorm'],[36,'hyperrush'],[40,'drakeclaw'],[48,'sovereignblast']],
+  dx:'An ancient grove given draconic form. Forests grow faster where it walks.'},
+ {n:'Cindcub',t:['Fire'],b:[44,52,43,60,50,55],cr:45,bx:62,ev:[5,16],a:'biped',h:8,
+  ls:[[1,'scratch'],[1,'growl'],[6,'ember'],[12,'quickstrike'],[17,'flamerush'],[24,'bite'],[30,'blazeburst'],[38,'hyperrush']],
+  dx:'A cub with embers in its fur. It naps near campfires to keep its flame fed.'},
+ {n:'Pyrebear',t:['Fire'],b:[58,72,55,78,62,68],cr:45,bx:142,ev:[6,34],a:'biped',h:8,
+  ls:[[1,'scratch'],[1,'growl'],[6,'ember'],[12,'quickstrike'],[17,'flamerush'],[24,'bite'],[30,'blazeburst'],[38,'hyperrush']],
+  dx:'Its back smolders constantly. Rain hisses into steam before touching its skin.'},
+ {n:'Infernursa',t:['Fire','Ground'],b:[82,100,75,95,75,72],cr:45,bx:238,ev:null,a:'biped',h:8,
+  ls:[[1,'scratch'],[1,'growl'],[6,'ember'],[12,'quickstrike'],[17,'flamerush'],[24,'bite'],[30,'blazeburst'],[38,'hyperrush'],[42,'seismicslam']],
+  dx:'A volcanic colossus. Old maps mark its dens as active calderas.'},
+ {n:'Puddlit',t:['Water'],b:[46,48,55,52,58,45],cr:45,bx:62,ev:[8,16],a:'blob',h:14,
+  ls:[[1,'tackle'],[1,'harden'],[7,'tidaljab'],[13,'hydropulse'],[19,'icelance'],[26,'mend'],[32,'tidalwave']],
+  dx:'A droplet beast that hides in puddles after rain, mimicking a ripple.'},
+ {n:'Streamodon',t:['Water'],b:[62,66,75,70,75,58],cr:45,bx:142,ev:[9,34],a:'fish',h:14,
+  ls:[[1,'tackle'],[1,'harden'],[7,'tidaljab'],[13,'hydropulse'],[19,'icelance'],[26,'mend'],[32,'tidalwave']],
+  dx:'It swims upstream against waterfalls to strengthen its armored fins.'},
+ {n:'Tidalith',t:['Water','Steel'],b:[88,84,105,90,95,60],cr:45,bx:240,ev:null,a:'fish',h:14,
+  ls:[[1,'tackle'],[1,'harden'],[7,'tidaljab'],[13,'hydropulse'],[19,'icelance'],[26,'mend'],[32,'tidalwave'],[38,'steelram'],[46,'hydroburst']],
+  dx:'Its hide is mineral-hard from deep-sea pressure. It can sink warships by ramming.'},
+ {n:'Fluffinch',t:['Normal','Flying'],b:[40,45,40,38,40,62],cr:255,bx:50,ev:[11,18],a:'bird',h:3,
+  ls:[[1,'tackle'],[1,'growl'],[5,'gust'],[10,'quickstrike'],[15,'wingstrike'],[22,'skydive'],[30,'hyperrush']],
+  dx:'A round songbird common across Veridia. Its chirp predicts the weather.'},
+ {n:'Galestrike',t:['Normal','Flying'],b:[65,80,60,55,60,98],cr:120,bx:150,ev:null,a:'bird',h:3,
+  ls:[[1,'tackle'],[1,'growl'],[5,'gust'],[10,'quickstrike'],[15,'wingstrike'],[22,'skydive'],[30,'hyperrush']],
+  dx:'It dives at the speed of a storm front. Pilots report seeing it above the clouds.'},
+ {n:'Nibbit',t:['Normal'],b:[38,50,38,32,36,58],cr:255,bx:48,ev:[13,15],a:'quad',h:5,
+  ls:[[1,'tackle'],[4,'growl'],[8,'quickstrike'],[13,'bite'],[18,'slam'],[26,'hyperrush']],
+  dx:'A field rodent that gnaws on anything. Farmers both curse and adore it.'},
+ {n:'Gnawdent',t:['Normal'],b:[62,82,62,50,58,82],cr:127,bx:145,ev:null,a:'quad',h:5,
+  ls:[[1,'tackle'],[4,'growl'],[8,'quickstrike'],[13,'bite'],[18,'slam'],[26,'hyperrush']],
+  dx:'Its incisors regrow overnight no matter how much it chews through.'},
+ {n:'Larvit',t:['Bug'],b:[40,35,40,30,35,35],cr:255,bx:42,ev:[15,10],a:'serpent',h:6,
+  ls:[[1,'tackle'],[5,'bugbite']],
+  dx:'A glossy grub that eats ten times its weight in leaves daily.'},
+ {n:'Cocoonix',t:['Bug'],b:[45,30,62,30,55,25],cr:160,bx:60,ev:[16,18],a:'blob',h:6,
+  ls:[[1,'tackle'],[5,'bugbite'],[10,'harden']],
+  dx:'It hangs motionless from branches, hardening its shell with silk and resin.'},
+ {n:'Flutterex',t:['Bug','Psychic'],b:[65,55,60,92,80,86],cr:60,bx:178,ev:null,a:'bird',h:6,
+  ls:[[1,'gust'],[5,'bugbite'],[10,'harden'],[18,'mindjab'],[24,'psybeam'],[30,'swarmstrike'],[38,'mindcrush'],[44,'calmfocus']],
+  dx:'The patterns on its wings induce vivid dreams in anyone who stares too long.'},
+ {n:'Pebblit',t:['Rock'],b:[50,72,82,35,40,30],cr:200,bx:70,ev:[18,25],a:'blob',h:10,
+  ls:[[1,'tackle'],[1,'harden'],[7,'rockthrow'],[14,'mudshot'],[21,'screech'],[28,'stonespike'],[36,'seismicslam']],
+  dx:'Often mistaken for a stone until it blinks. It eats gravel for minerals.'},
+ {n:'Bouldron',t:['Rock','Ground'],b:[75,100,112,50,60,40],cr:90,bx:175,ev:null,a:'biped',h:10,
+  ls:[[1,'tackle'],[1,'harden'],[7,'rockthrow'],[14,'mudshot'],[21,'screech'],[28,'stonespike'],[36,'seismicslam']],
+  dx:'A walking landslide. Roads in Veridia route around its sleeping grounds.'},
+ {n:'Sparkit',t:['Electric'],b:[40,45,40,62,50,72],cr:190,bx:65,ev:[20,26],a:'quad',h:4,
+  ls:[[1,'quickstrike'],[1,'growl'],[7,'spark'],[13,'staticwave'],[19,'voltlash'],[27,'bite'],[34,'thundercrash']],
+  dx:'A kitten beast that builds static in its fur. Petting it is a known risk.'},
+ {n:'Voltigre',t:['Electric'],b:[65,78,60,98,70,108],cr:75,bx:180,ev:null,a:'quad',h:4,
+  ls:[[1,'quickstrike'],[1,'growl'],[7,'spark'],[13,'staticwave'],[19,'voltlash'],[27,'bite'],[34,'thundercrash']],
+  dx:'Its stripes glow before it pounces. Lightning storms follow its hunts.'},
+ {n:'Wispette',t:['Ghost'],b:[40,35,45,72,60,66],cr:160,bx:68,ev:[22,28],a:'ghost',h:12,
+  ls:[[1,'shadowjab'],[8,'growl'],[14,'hexpulse'],[22,'phantomstrike'],[30,'spiritburst'],[38,'mend']],
+  dx:'A candle-flame spirit. It appears in windows of houses long abandoned.'},
+ {n:'Phantasque',t:['Ghost'],b:[60,55,60,102,85,92],cr:60,bx:182,ev:null,a:'ghost',h:12,
+  ls:[[1,'shadowjab'],[8,'growl'],[14,'hexpulse'],[22,'phantomstrike'],[30,'spiritburst'],[38,'mend']],
+  dx:'It wears a tattered cloak of woven shadow. Mirrors do not reflect it.'},
+ {n:'Punchling',t:['Fighting'],b:[50,72,50,30,40,52],cr:180,bx:70,ev:[24,28],a:'biped',h:9,
+  ls:[[1,'jab'],[1,'growl'],[8,'quickstrike'],[15,'train'],[22,'powerkick'],[30,'bite'],[38,'titanfist']],
+  dx:'It shadowboxes from dawn to dusk. Its tiny fists can crack river stones.'},
+ {n:'Brawlore',t:['Fighting'],b:[80,108,75,45,60,72],cr:70,bx:185,ev:null,a:'biped',h:9,
+  ls:[[1,'jab'],[1,'growl'],[8,'quickstrike'],[15,'train'],[22,'powerkick'],[30,'bite'],[38,'titanfist']],
+  dx:'A wandering martial artist of the beast world. It bows before every battle.'},
+ {n:'Chillub',t:['Ice'],b:[50,55,50,58,50,42],cr:170,bx:70,ev:[26,30],a:'blob',h:13,
+  ls:[[1,'tackle'],[1,'growl'],[8,'frostnip'],[15,'harden'],[22,'icelance'],[30,'bite'],[38,'glacialstorm']],
+  dx:'A seal pup of the high passes. Its body heat is somehow below freezing.'},
+ {n:'Glacierce',t:['Ice'],b:[80,86,82,86,75,58],cr:70,bx:185,ev:null,a:'biped',h:13,
+  ls:[[1,'tackle'],[1,'growl'],[8,'frostnip'],[15,'harden'],[22,'icelance'],[30,'bite'],[38,'glacialstorm']],
+  dx:'Glaciers calve when it roars. Its tusks are clear as cut crystal.'},
+ {n:'Ferrold',t:['Steel'],b:[45,62,88,40,50,30],cr:150,bx:75,ev:[28,32],a:'quad',h:16,
+  ls:[[1,'tackle'],[1,'harden'],[9,'ironclaw'],[16,'mudshot'],[24,'steelram'],[32,'screech'],[40,'chromeblast']],
+  dx:'A pangolin of living iron. It rusts in the rain and polishes itself on rocks.'},
+ {n:'Forgeron',t:['Steel','Rock'],b:[70,98,122,60,70,40],cr:60,bx:190,ev:null,a:'quad',h:16,
+  ls:[[1,'tackle'],[1,'harden'],[9,'ironclaw'],[16,'mudshot'],[24,'steelram'],[32,'screech'],[40,'chromeblast']],
+  dx:'Smiths once built forges on its back, mistaking it for an anvil-shaped hill.'},
+ {n:'Wyrmling',t:['Dragon'],b:[45,55,45,55,45,55],cr:45,bx:72,ev:[30,30],a:'serpent',h:11,
+  ls:[[1,'scratch'],[1,'growl'],[9,'bite'],[16,'drakeclaw'],[24,'drakedance'],[32,'drakeroar'],[42,'skydive'],[50,'sovereignblast']],
+  dx:'A rare hatchling found only on Mt. Drakemont. It hoards shiny pebbles.'},
+ {n:'Drakemoor',t:['Dragon'],b:[62,77,62,77,62,77],cr:45,bx:160,ev:[31,45],a:'serpent',h:11,
+  ls:[[1,'scratch'],[1,'growl'],[9,'bite'],[16,'drakeclaw'],[24,'drakedance'],[32,'drakeroar'],[42,'skydive'],[50,'sovereignblast']],
+  dx:'It glides between peaks on mountain thermals, growing scales like slate.'},
+ {n:'Sovereignyx',t:['Dragon','Flying'],b:[90,112,85,112,85,100],cr:45,bx:255,ev:null,a:'serpent',h:11,
+  ls:[[1,'scratch'],[1,'growl'],[9,'bite'],[16,'drakeclaw'],[24,'drakedance'],[32,'drakeroar'],[42,'skydive'],[50,'sovereignblast']],
+  dx:'The crown of Veridia\u2019s skies. Storm clouds part to let it pass.'},
+ {n:'Finlet',t:['Water'],b:[42,48,42,50,45,62],cr:200,bx:60,ev:[33,22],a:'fish',h:2,
+  ls:[[1,'tackle'],[7,'tidaljab'],[14,'hydropulse'],[21,'frostnip'],[30,'tidalwave'],[38,'icelance']],
+  dx:'A leaping river fish. Children race them in the canals of Bloomfield.'},
+ {n:'Marlance',t:['Water'],b:[70,92,65,75,65,96],cr:90,bx:165,ev:null,a:'fish',h:2,
+  ls:[[1,'tackle'],[7,'tidaljab'],[14,'hydropulse'],[21,'frostnip'],[30,'tidalwave'],[38,'icelance']],
+  dx:'Its bill is a living lance. It spears through waves at incredible speed.'},
+ {n:'Mindmote',t:['Psychic'],b:[40,30,40,66,60,56],cr:160,bx:65,ev:[35,30],a:'ghost',h:7,
+  ls:[[1,'mindjab'],[8,'growl'],[15,'psybeam'],[23,'calmfocus'],[31,'mindcrush'],[39,'mend']],
+  dx:'A floating orb of thought. It hums old lullabies no one taught it.'},
+ {n:'Cerebrux',t:['Psychic'],b:[70,45,65,108,95,86],cr:60,bx:185,ev:null,a:'ghost',h:7,
+  ls:[[1,'mindjab'],[8,'growl'],[15,'psybeam'],[23,'calmfocus'],[31,'mindcrush'],[39,'mend']],
+  dx:'It solves problems before they are asked. Scholars seek its silent counsel.'},
+ {n:'Shadepup',t:['Dark'],b:[45,62,40,45,40,62],cr:170,bx:66,ev:[37,24],a:'quad',h:15,
+  ls:[[1,'scratch'],[7,'bite'],[14,'quickstrike'],[21,'duskslash'],[29,'screech'],[36,'umbralwave']],
+  dx:'A pup of dusk. It naps in shadows and growls at its own tail.'},
+ {n:'Duskhound',t:['Dark'],b:[70,92,60,70,60,92],cr:75,bx:178,ev:null,a:'quad',h:15,
+  ls:[[1,'scratch'],[7,'bite'],[14,'quickstrike'],[21,'duskslash'],[29,'screech'],[36,'umbralwave']],
+  dx:'It hunts in moonless dark, guided by scent alone. Loyal beyond reason.'},
+ {n:'Toxitoad',t:['Poison'],b:[72,60,66,66,72,50],cr:120,bx:150,ev:null,a:'blob',h:17,
+  ls:[[1,'tackle'],[6,'toxicsting'],[12,'hydropulse'],[18,'toxin'],[26,'venomblast'],[34,'tidalwave']],
+  dx:'Its warts brew a different toxin each season. Apothecaries pay well for them.'},
+ {n:'Burrowl',t:['Ground'],b:[50,66,56,35,40,46],cr:190,bx:66,ev:[40,28],a:'quad',h:18,
+  ls:[[1,'scratch'],[1,'growl'],[8,'mudshot'],[15,'harden'],[22,'rockthrow'],[30,'quakepulse'],[38,'seismicslam']],
+  dx:'An owl-faced mole. Its tunnels undermine fences across the region.'},
+ {n:'Terradon',t:['Ground','Rock'],b:[85,102,92,55,65,55],cr:80,bx:180,ev:null,a:'biped',h:18,
+  ls:[[1,'scratch'],[1,'growl'],[8,'mudshot'],[15,'harden'],[22,'rockthrow'],[30,'quakepulse'],[38,'seismicslam']],
+  dx:'It surfaces like a breaching whale of earth, then vanishes back below.'},
+ {n:'Aurorath',t:['Ice','Dragon'],b:[100,90,90,122,100,100],cr:3,bx:300,ev:null,a:'serpent',h:19,
+  ls:[[1,'icelance'],[1,'drakeroar'],[1,'glacialstorm'],[1,'calmfocus'],[60,'sovereignblast']],
+  dx:'LEGEND. The aurora is said to be its breath frozen across the night sky.'},
+ {n:'Voltyrant',t:['Electric','Steel'],b:[90,112,100,95,90,116],cr:3,bx:300,ev:null,a:'biped',h:20,
+  ls:[[1,'voltlash'],[1,'ironclaw'],[1,'thundercrash'],[1,'steelram']],
+  dx:'LEGEND. A living dynamo that slumbers beneath old power-line ruins.'},
+ {n:'Gaiatlas',t:['Ground','Psychic'],b:[112,100,112,100,112,70],cr:3,bx:300,ev:null,a:'biped',h:21,
+  ls:[[1,'quakepulse'],[1,'mindcrush'],[1,'seismicslam'],[1,'calmfocus']],
+  dx:'LEGEND. It dreams the shape of the land, and the land obeys.'}
+];
+
+/* ---------- items ---------- */
+const ITEMS={
+ orb:{n:'Capture Orb',price:200,kind:'ball',mult:1,d:'A device for catching wild beasts.'},
+ greatorb:{n:'Great Orb',price:600,kind:'ball',mult:1.5,d:'A high-grade orb with a better catch rate.'},
+ ultraorb:{n:'Ultra Orb',price:1200,kind:'ball',mult:2,d:'A top-grade orb for stubborn beasts.'},
+ potion:{n:'Potion',price:300,kind:'heal',hp:20,d:'Restores 20 HP.'},
+ superpotion:{n:'Super Potion',price:700,kind:'heal',hp:60,d:'Restores 60 HP.'},
+ hyperpotion:{n:'Hyper Potion',price:1500,kind:'heal',hp:150,d:'Restores 150 HP.'},
+ remedy:{n:'Remedy',price:600,kind:'status',d:'Cures any status condition.'},
+ revive:{n:'Revive',price:2000,kind:'revive',d:'Revives a fainted beast to half HP.'},
+ oranberry:{n:'Oran Berry',price:200,kind:'held',d:'Held: restores 30 HP once when HP runs low.'},
+ mosscharm:{n:'Moss Charm',price:1500,kind:'held',d:'Held: slowly restores HP at the end of each turn.'},
+ powerband:{n:'Power Band',price:1800,kind:'held',d:'Held: boosts physical moves by 10%.'},
+ wisplens:{n:'Wisp Lens',price:1800,kind:'held',d:'Held: boosts special moves by 10%.'}
+};
+function abilityOf(m){
+ const t0=SPECIES[m.sp].t[0];
+ return(t0==='Dark'||t0==='Fighting'||t0==='Dragon')?'Daunt':'Resolve';
+}
+
+/* ---------- gyms / league / rival ---------- */
+const GYMS=[
+ {city:'Pebbleton',leader:'Mason',type:'Rock',badge:'Terra Badge',team:[[39,9],[55,10],[17,12]],prize:1400,
+  intro:'I\u2019m Mason. My beasts are as stubborn as the stone they\u2019re carved from!',win:'Solid as a rock... and yet you cracked me. Take the Terra Badge.'},
+ {city:'Bloomfield',leader:'Flora',type:'Grass',badge:'Bloom Badge',team:[[48,14],[62,14],[2,16]],prize:1900,
+  intro:'Welcome to my garden. Let\u2019s see if you wilt under pressure!',win:'You\u2019ve grown so much already. The Bloom Badge is yours.'},
+ {city:'Volton',leader:'Ampere',type:'Electric',badge:'Surge Badge',team:[[51,18],[97,19],[20,21]],prize:2400,
+  intro:'Feel the current?! My beasts strike faster than thought!',win:'Shocking! Absolutely shocking. The Surge Badge is yours.'},
+ {city:'Misthollow',leader:'Raven',type:'Ghost',badge:'Veil Badge',team:[[64,23],[21,24],[22,26]],prize:3000,
+  intro:'You walked through my fog to find me... brave. Or foolish.',win:'The veil lifts for you. Take the Veil Badge and go.'},
+ {city:'Fortcrest',leader:'Titus',type:'Fighting',badge:'Iron-Will Badge',team:[[73,28],[23,29],[24,31]],prize:3500,
+  intro:'A thousand push-ups before breakfast! Can your spirit match mine?!',win:'HA! A worthy bout! The Iron-Will Badge belongs to you!'},
+ {city:'Frostvale',leader:'Ingrid',type:'Ice',badge:'Glacier Badge',team:[[78,32],[80,33],[26,35]],prize:4000,
+  intro:'The cold sharpens everything. Including my beasts\u2019 fangs.',win:'Warm-hearted and cool-headed. The Glacier Badge is yours.'},
+ {city:'Ironforge',leader:'Magnus',type:'Steel',badge:'Anvil Badge',team:[[58,37],[27,38],[28,40]],prize:4600,
+  intro:'Every defeat hammered me into better shape. Your turn on the anvil!',win:'Forged true. Carry the Anvil Badge with pride.'},
+ {city:'Drakemont',leader:'Sylvia',type:'Dragon',badge:'Wyrm Badge',team:[[99,42],[30,43],[31,45]],prize:5200,
+  intro:'Dragons answer only to those without fear. Show me your eyes.',win:'...Fearless. The Wyrm Badge, and the road to the League, are open to you.'}
+];
+const ELITE=[
+ {name:'Aran',title:'Elite Four',type:'Bug',team:[[52,47],[66,47],[88,48],[16,50]],prize:6000,
+  intro:'They call bugs weak. They have never heard a million wings at once.'},
+ {name:'Vera',title:'Elite Four',type:'Psychic',team:[[92,48],[90,48],[35,49],[82,50]],prize:6500,
+  intro:'I saw this battle in a dream. Shall we see if dreams lie?'},
+ {name:'Mort',title:'Elite Four',type:'Dark',team:[[68,49],[96,49],[37,50],[22,51]],prize:7000,
+  intro:'In the dark, technique means nothing. Only nerve.'},
+ {name:'Zephyr',title:'Elite Four',type:'Flying',team:[[54,50],[75,50],[11,51],[92,51]],prize:7500,
+  intro:'The sky bows to no badge. Earn your place in it.'}
+];
+const CHAMPION={name:'Aurelia',title:'Champion',team:[[20,52],[84,53],[73,53],[6,54],[101,54],[31,56]],prize:12000,
+ intro:'Every tamer who stands here carried a whole region\u2019s worth of battles. Show me all of them at once.',
+ win:'...Magnificent. Veridia has a new Champion. Stand tall \u2014 you\u2019ve earned the title.'};
+function rivalTeam(stage,starter){ // starter = species id of player's starter (1,4,7)
+ const counter={1:4,4:7,7:1}[starter]; // rival picked the type-advantaged starter
+ const s1=counter,s2=SPECIES[counter].ev[0],s3=SPECIES[s2].ev[0];
+ if(stage===0)return[[s1,8]];
+ if(stage===1)return[[10,19],[s2,21]];
+ if(stage===2)return[[11,34],[33,34],[s3,37]];
+ return[[11,49],[75,48],[37,48],[92,49],[s3,52]];
+}
+const RIVAL_LINES=[
+ {pre:'Kai: There you are! Gramps gave you a beast too, huh? Then you know what comes next!',win:'Kai: Tch. Beginner\u2019s luck. Catch more beasts or you\u2019ll fall behind me!',lose:'Kai: Told you. Train harder!'},
+ {pre:'Kai: Yo! Two badges already? Me too. Let\u2019s settle who\u2019s really faster.',win:'Kai: Again?! Fine. FINE. I\u2019m doubling my training.',lose:'Kai: That\u2019s more like it \u2014 for me!'},
+ {pre:'Kai: The mountain air makes beasts stronger. Mine especially. Prove me wrong!',win:'Kai: ...You\u2019re the real deal, aren\u2019t you. See you at the League. Don\u2019t lose before then.',lose:'Kai: The summit isn\u2019t for everyone!'},
+ {pre:'Kai: I knew you\u2019d make it here. Before the Elite Four... one last time. Everything we\u2019ve got!',win:'Kai: Heh... go on then. Take the whole thing. And hey \u2014 thanks for pushing me this far.',lose:'Kai: The League can wait for you. I won\u2019t!'}
+];
+
+/* ============================================================
+   WORLD
+   Tiles: '.'grass ','flowers '-'path 'G'tall grass 'T'tree
+   'W'water 'R'rock 'F'fence 'b'wall 'r'roof 'D'door 'S'sign
+   'f'floor 'C'counter 'M'exit mat 'X'void 'I'ice 'q'cliff
+   ============================================================ */
+const SOLID={'T':1,'W':1,'F':1,'b':1,'r':1,'S':1,'R':1,'C':1,'X':1,'q':1,'k':1,'d':1,'l':1,'J':1,'p':1,'Y':1};
+const ENC_TILES={'G':.13,'c':.07,'h':.14,'u':.12,'w':.12,'n':.13,'m':.05,'v':.06};
+const OVERLAY={'T':1,'R':1,'S':1,'F':1,'Y':1,'J':1,'d':1,'p':1};
+const WORLD={}; // id -> map
+
+function blank(w,h,fill){const g=[];for(let y=0;y<h;y++){g.push(new Array(w).fill(fill));}return g}
+function rect(g,x,y,w,h,ch){for(let j=y;j<y+h;j++)for(let i=x;i<x+w;i++){if(g[j]&&g[j][i]!==undefined)g[j][i]=ch;}}
+function putBuilding(g,x,y,w,h){ // roof 2 rows + wall, door bottom-center; returns door pos
+ rect(g,x,y,w,2,'r');rect(g,x,y+2,w,h-2,'b');
+ const dx=x+Math.floor(w/2),dy=y+h-1;g[dy][dx]='D';return{x:dx,y:dy};
+}
+function finishMap(m){
+ m.w=m.grid[0].length;m.h=m.grid.length;
+ m.npcs=m.npcs||[];m.warps=m.warps||{};m.enc=m.enc||null;m.exits=m.exits||{};
+ WORLD[m.id]=m;return m;
+}
+function wk(x,y){return x+','+y}
+
+/* ----- interiors ----- */
+function makeCenter(id,outId){
+ const g=blank(9,7,'f');rect(g,0,0,9,1,'X');rect(g,1,1,7,1,'C');
+ g[6][4]='M';
+ const m={id,grid:g,indoor:true,oob:'X',ground:'f',name:'Beast Center',
+  npcs:[{x:4,y:0,kind:'nurse',pal:6,dialog:null},
+        {x:7,y:2,kind:'pc',pal:0,dialog:null}],
+  warps:{}};
+ m.warps[wk(4,6)]={out:outId};
+ m.npcs[0].y=0; // behind counter; interact handled by counter facing
+ return finishMap(m);
+}
+function makeMart(id,outId){
+ const g=blank(8,6,'f');rect(g,0,0,8,1,'X');rect(g,1,1,3,1,'C');
+ g[5][4]='M';
+ const m={id,grid:g,indoor:true,oob:'X',ground:'f',name:'Veridia Mart',
+  npcs:[{x:2,y:0,kind:'shop',pal:4}],warps:{}};
+ m.warps[wk(4,5)]={out:outId};
+ return finishMap(m);
+}
+function makeGymInt(id,outId,gi){
+ const G2=GYMS[gi];
+ const g=blank(9,11,'f');rect(g,0,0,9,1,'X');
+ for(let y=2;y<10;y++){g[y][2]='C';g[y][6]='C';}
+ g[10][4]='M';
+ const lvl=G2.team[0][1];
+ const grunt1={x:3,y:7,kind:'trainer',pal:2,face:'right',range:2,
+   trainer:{name:G2.type+' Trainee Rex',team:[[G2.team[0][0],lvl-2]],prize:lvl*35,flag:'gym'+gi+'t1',
+   pre:'No shortcuts to the leader!',win:'Go on then...',lose:'The leader is tougher than me!'}};
+ const grunt2={x:5,y:4,kind:'trainer',pal:2,face:'left',range:2,
+   trainer:{name:G2.type+' Trainee Una',team:[[G2.team[G2.team.length>1?1:0][0],lvl-1]],prize:lvl*35,flag:'gym'+gi+'t2',
+   pre:'The leader trained me well!',win:'...maybe not well enough.',lose:'Come back stronger!'}};
+ const leader={x:4,y:1,kind:'leader',pal:3,face:'down',gym:gi};
+ const m={id,grid:g,indoor:true,oob:'X',ground:'f',name:G2.city+' Gym',npcs:gi===0?[leader,grunt1]:[leader,grunt1,grunt2],warps:{}};
+ m.warps[wk(4,10)]={out:outId};
+ return finishMap(m);
+}
+function makeLab(id,outId){
+ const g=blank(10,8,'f');rect(g,0,0,10,1,'X');rect(g,6,2,3,1,'C');
+ g[7][4]='M';
+ const m={id,grid:g,indoor:true,oob:'X',ground:'f',name:'Maple Beast Lab',
+  npcs:[{x:7,y:1,kind:'prof',pal:5}],warps:{}};
+ m.warps[wk(4,7)]={out:outId};
+ return finishMap(m);
+}
+
+/* ----- towns ----- */
+function makeTown(idx,cfg){
+ const id='c'+idx,W2=23,H=17,rng=mulberry32(1000+idx);
+ const g=blank(W2,H,'.');
+ // border trees, gaps for n/s exits
+ rect(g,0,0,W2,1,'T');rect(g,0,H-1,W2,1,'T');rect(g,0,0,1,H,'T');rect(g,W2-1,0,1,H,'T');
+ const cx=11;
+ rect(g,cx-1,0,3,H,'-');               // main vertical road
+ rect(g,2,8,W2-4,2,'-');               // cross road
+ // flowers
+ for(let i=0;i<14;i++){const x=rint(rng,2,W2-3),y=rint(rng,2,H-3);if(g[y][x]==='.')g[y][x]=',';}
+ // buildings
+ const dC=putBuilding(g,3,3,5,4);      // beast center
+ const dM=putBuilding(g,16,3,5,4);     // mart
+ const dG=putBuilding(g,3,11,6,5);     // gym
+ putBuilding(g,16,11,5,4);             // house (decor)
+ // signs
+ g[8][cx+2]='S';
+ const m={id,grid:g,name:cfg.name,town:true,ground:'.',
+  npcs:[],warps:{},exits:{n:cfg.n,s:cfg.s},
+  heal:{x:cx,y:9}};
+ m.warps[wk(dC.x,dC.y)]={to:'center'+idx,x:4,y:5};
+ m.warps[wk(dM.x,dM.y)]={to:'mart'+idx,x:4,y:4};
+ m.warps[wk(dG.x,dG.y)]={to:'gym'+idx,x:4,y:9};
+ m.signs={[wk(cx+2,8)]:cfg.name+'  \u2014  '+cfg.motto};
+ // badge gate guard on north road
+ m.npcs.push({x:cx,y:1,kind:'guard',pal:1,face:'down',gate:idx,
+  dialog:'Guard: The road north is closed until you\u2019ve earned the '+GYMS[idx].badge+' from the '+cfg.name+' Gym!',
+  openDialog:'Guard: Road\u2019s open. Safe travels, Champion-to-be!'});
+ // townsfolk
+ m.npcs.push({x:rint(rng,4,9),y:9,kind:'npc',pal:rint(rng,0,7),face:'down',dialog:cfg.chat});
+ makeCenter('center'+idx,id);makeMart('mart'+idx,id);makeGymInt('gym'+idx,id,idx);
+ return finishMap(m);
+}
+
+/* ----- routes ----- */
+function makeRoute(idx,cfg){
+ const id='r'+idx,W2=13,H=28,rng=mulberry32(2000+idx);
+ const g=blank(W2,H,'.');
+ rect(g,0,0,1,H,'T');rect(g,W2-1,0,1,H,'T');
+ if(!cfg.n)rect(g,0,0,W2,1,'T');
+ if(!cfg.s)rect(g,0,H-1,W2,1,'T');
+ // meandering path
+ let x=6;const pathX=[];
+ for(let y=H-1;y>=0;y--){
+  pathX[y]=x;g[y][x]='-';if(x>1)g[y][x-1]='-';
+  if(y%3===0&&y>2&&y<H-3){x=clamp(x+rint(rng,-1,1),3,W2-4);}
+ }
+ // grass patches
+ for(let i=0;i<7;i++){
+  const gx=rint(rng,2,W2-5),gy=rint(rng,2,H-5),gw=rint(rng,2,3),gh=rint(rng,2,3);
+  for(let j=gy;j<gy+gh;j++)for(let k=gx;k<gx+gw;k++){if(g[j][k]==='.')g[j][k]='G';}
+ }
+ // force grass over part of the path so encounters can't be skipped
+ for(const fy of cfg.forceGrass||[Math.floor(H*0.35),Math.floor(H*0.65)]){
+  for(let j=fy;j<fy+2;j++){for(let k=1;k<W2-1;k++){if(!SOLID[g[j][k]])g[j][k]='G';}}
+ }
+ // scattered trees/rocks off-path
+ for(let i=0;i<9;i++){
+  const tx=rint(rng,2,W2-3),ty=rint(rng,2,H-3);
+  if(g[ty][tx]==='.'&&Math.abs(tx-pathX[ty])>1)g[ty][tx]=pick(rng,['T','T','R']);
+ }
+ const m={id,grid:g,name:cfg.name,enc:cfg.enc,npcs:[],warps:{},exits:{n:cfg.n,s:cfg.s},signs:{}};
+ // sign
+ const sy=H-3;g[sy][pathX[sy]+2]='S';m.signs[wk(pathX[sy]+2,sy)]=cfg.name;
+ // trainers stand beside the path facing across it
+ (cfg.trainers||[]).forEach((tr,i,arr)=>{
+  const at=tr.at!==undefined?tr.at:(arr.length===1?0.5:0.3+i*(0.45/(arr.length-1)));
+  const ty=clamp(Math.floor(H*at),2,H-3);const px=pathX[ty];
+  const side=(i%2===0)?1:-1;let tx=px+2*side;tx=clamp(tx,1,W2-2);
+  g[ty][tx]='.';g[ty][px+side]= SOLID[g[ty][px+side]]?'.':g[ty][px+side];
+  m.npcs.push({x:tx,y:ty,kind:'trainer',pal:tr.pal??2,face:side===1?'left':'right',range:3,trainer:tr});
+ });
+ (cfg.extras||[]).forEach(n=>{if(n.at!==undefined){const ty=clamp(Math.floor(H*n.at),2,H-3);n.x=pathX[ty];n.y=ty;}m.npcs.push(n)});
+ m.ground='.';
+ return finishMap(m);
+}
+
+function T(name,team,prize,pre,win,lose,flag){return{name,team,prize,pre,win,lose,flag}}
+
+/* ============================================================
+   SPRITES (all procedural pixel art)
+   ============================================================ */
+const TILE=16,VW=15,VH=12,RS=3,TS=TILE*RS; // logic tile 16, rendered at 48px, 15x12 view
+function mkCanvas(w,h){const c=document.createElement('canvas');c.width=w;c.height=h;return c}
+function shade(hex,f){ // f>0 lighten, f<0 darken
+ const n=parseInt(hex.slice(1),16);let r=n>>16,g=(n>>8)&255,b=n&255;
+ if(f>0){r+=(255-r)*f;g+=(255-g)*f;b+=(255-b)*f}else{r*=(1+f);g*=(1+f);b*=(1+f)}
+ return'#'+[r,g,b].map(v=>('0'+Math.round(clamp(v,0,255)).toString(16)).slice(-2)).join('');
+}
+const TILES={};
+function buildTiles(){
+ const X=c=>c.getContext('2d');
+ const f=(c,col)=>{const x=X(c);x.fillStyle=col;x.fillRect(0,0,48,48)};
+ const lg=(c,c1,c2)=>{const x=X(c);const g=x.createLinearGradient(0,0,0,48);g.addColorStop(0,c1);g.addColorStop(1,c2);x.fillStyle=g;x.fillRect(0,0,48,48)};
+ const rgf=(x,cx,cy,r,c1,c2)=>{const g=x.createRadialGradient(cx-r*.3,cy-r*.35,r*.12,cx,cy,r);g.addColorStop(0,c1);g.addColorStop(1,c2);x.fillStyle=g};
+ const spk=(c,col,n,sz)=>{const x=X(c),rr=mulberry32(n*131+col.length*7);x.fillStyle=col;
+  for(let i=0;i<n;i++){x.globalAlpha=.35+rr()*.5;x.beginPath();x.arc(4+rr()*40,4+rr()*40,(sz||1.4)+rr()*1.2,0,7);x.fill()}x.globalAlpha=1};
+ const grassBase=c=>{lg(c,'#8ed162','#72bb4b');const x=X(c);x.fillStyle='rgba(0,40,0,.05)';x.fillRect(0,0,24,24);x.fillRect(24,24,24,24);
+  x.strokeStyle='rgba(255,255,255,.13)';x.lineWidth=1.4;
+  for(const[bx,by]of[[9,38],[26,14],[39,30],[15,20]]){x.beginPath();x.moveTo(bx,by);x.quadraticCurveTo(bx+2,by-6,bx+1,by-9);x.stroke()}};
+ const flower=(x,fx2,fy,col)=>{x.fillStyle=col;for(let i=0;i<5;i++){const a2=i/5*6.28;x.beginPath();x.arc(fx2+Math.cos(a2)*3.4,fy+Math.sin(a2)*3.4,2.6,0,7);x.fill()}x.fillStyle='#f5d040';x.beginPath();x.arc(fx2,fy,2.4,0,7);x.fill()};
+ const defs={
+  '.':grassBase,
+  ',':c=>{grassBase(c);const x=X(c);flower(x,13,15,'#f6dce9');flower(x,33,30,'#fdf3c0');flower(x,20,38,'#f6dce9')},
+  '-':c=>{lg(c,'#ddc893','#ccb274');const x=X(c);
+   for(const[px2,py2,r]of[[10,12,2.5],[30,34,3],[40,10,2],[18,40,2.2]]){rgf(x,px2,py2,r,'#e8d8a8','#bfa86a');x.beginPath();x.arc(px2,py2,r,0,7);x.fill()}},
+  'G':c=>{lg(c,'#4f9a38','#3e8230');const x=X(c);
+   const blade=(bx,by,h,col)=>{x.fillStyle=col;x.beginPath();x.moveTo(bx-3,by);x.quadraticCurveTo(bx-1,by-h*.6,bx,by-h);x.quadraticCurveTo(bx+1,by-h*.6,bx+3,by);x.fill()};
+   for(let j=0;j<3;j++)for(let i=0;i<4;i++){const bx=6+i*12+(j%2)*6,by=18+j*14;
+    blade(bx,by,13,'#357526');blade(bx+3,by+1,11,'#58aa42');blade(bx-2,by+2,9,'#74c659')}},
+  'T':c=>{const x=X(c);
+   x.fillStyle='rgba(0,0,0,.18)';x.beginPath();x.ellipse(24,43,14,4,0,0,7);x.fill();
+   const g2=x.createLinearGradient(20,28,28,46);g2.addColorStop(0,'#8a6a40');g2.addColorStop(1,'#5e4628');x.fillStyle=g2;
+   x.beginPath();x.roundRect(20,28,8,17,3);x.fill();
+   rgf(x,24,17,17,'#5db04e','#2c6628');x.beginPath();x.arc(24,18,16,0,7);x.fill();
+   rgf(x,18,12,10,'#85d36e','#4a9a3c');x.beginPath();x.arc(18,12,9,0,7);x.fill();
+   x.fillStyle='rgba(255,255,255,.25)';x.beginPath();x.arc(15,8,3.5,0,7);x.fill()},
+  'W':c=>{lg(c,'#4e8ade','#3563b4');const x=X(c);
+   x.strokeStyle='rgba(255,255,255,.4)';x.lineWidth=2;
+   x.beginPath();x.moveTo(4,14);x.quadraticCurveTo(14,10,24,14);x.stroke();
+   x.beginPath();x.moveTo(22,34);x.quadraticCurveTo(33,30,44,34);x.stroke();
+   x.fillStyle='rgba(255,255,255,.18)';x.beginPath();x.ellipse(34,12,5,2,0,0,7);x.fill()},
+  'w':c=>{lg(c,'#74c8da','#4ba2c4');const x=X(c);
+   x.fillStyle='rgba(232,212,158,.5)';x.beginPath();x.ellipse(14,36,9,4,0,0,7);x.fill();x.beginPath();x.ellipse(36,16,7,3,0,0,7);x.fill();
+   x.strokeStyle='rgba(255,255,255,.5)';x.lineWidth=1.6;x.beginPath();x.moveTo(8,22);x.quadraticCurveTo(16,19,24,22);x.stroke()},
+  'R':c=>{const x=X(c);
+   x.fillStyle='rgba(0,0,0,.18)';x.beginPath();x.ellipse(24,40,15,4.5,0,0,7);x.fill();
+   rgf(x,22,24,18,'#cabfa2','#766c58');x.beginPath();x.moveTo(8,40);x.quadraticCurveTo(6,18,20,12);x.quadraticCurveTo(38,8,41,26);x.quadraticCurveTo(43,40,30,41);x.closePath();x.fill();
+   x.fillStyle='rgba(255,255,255,.22)';x.beginPath();x.ellipse(19,18,6,3.5,-.5,0,7);x.fill()},
+  'S':c=>{const x=X(c);
+   x.fillStyle='rgba(0,0,0,.15)';x.beginPath();x.ellipse(24,44,11,3,0,0,7);x.fill();
+   x.fillStyle='#6e5230';x.fillRect(21,26,6,18);
+   const g2=x.createLinearGradient(0,8,0,28);g2.addColorStop(0,'#d2a86c');g2.addColorStop(1,'#9a7340');x.fillStyle=g2;
+   x.beginPath();x.roundRect(7,8,34,20,4);x.fill();
+   x.strokeStyle='#5e4626';x.lineWidth=2;x.beginPath();x.roundRect(7,8,34,20,4);x.stroke();
+   x.fillStyle='rgba(94,70,38,.6)';x.fillRect(12,15,24,2);x.fillRect(12,20,18,2)},
+  'F':c=>{const x=X(c);x.fillStyle='#8a6a44';
+   for(const px2 of[8,24,40]){x.beginPath();x.roundRect(px2-3,14,6,28,2);x.fill()}
+   x.fillStyle='#a5814f';x.fillRect(0,18,48,5);x.fillRect(0,30,48,5)},
+  'b':c=>{lg(c,'#e6dcc8','#c9bda2');const x=X(c);
+   x.strokeStyle='rgba(120,104,76,.5)';x.lineWidth=2;x.strokeRect(1,1,46,46);
+   const g2=x.createLinearGradient(0,12,0,34);g2.addColorStop(0,'#bcdcf2');g2.addColorStop(1,'#6e9cc0');x.fillStyle=g2;
+   x.beginPath();x.roundRect(12,12,24,20,3);x.fill();
+   x.strokeStyle='#4e6e8e';x.strokeRect(12,12,24,20);x.beginPath();x.moveTo(24,12);x.lineTo(24,32);x.stroke()},
+  'r':c=>{lg(c,'#cd7060','#9a4538');const x=X(c);
+   x.fillStyle='rgba(255,255,255,.16)';x.fillRect(0,0,48,7);x.fillRect(0,24,48,7);
+   x.fillStyle='rgba(0,0,0,.14)';x.fillRect(0,14,48,3);x.fillRect(0,38,48,3)},
+  'D':c=>{lg(c,'#e6dcc8','#c9bda2');const x=X(c);
+   const g2=x.createLinearGradient(0,6,0,46);g2.addColorStop(0,'#9a6c40');g2.addColorStop(1,'#5e3e20');x.fillStyle=g2;
+   x.beginPath();x.roundRect(10,6,28,40,5);x.fill();
+   x.fillStyle='rgba(255,255,255,.13)';x.beginPath();x.roundRect(13,9,22,16,3);x.fill();
+   x.fillStyle='#f2cf5e';x.beginPath();x.arc(32,29,2.8,0,7);x.fill()},
+  'f':c=>{lg(c,'#dbcfb4','#cbbda0');const x=X(c);
+   x.strokeStyle='rgba(140,120,90,.35)';x.lineWidth=1.5;
+   for(const yy of[16,32])x.strokeRect(0,yy,48,0);x.strokeRect(24,0,0,48)},
+  'C':c=>{const x=X(c);
+   const g2=x.createLinearGradient(0,12,0,48);g2.addColorStop(0,'#b08654');g2.addColorStop(1,'#8a6438');x.fillStyle=g2;x.fillRect(0,12,48,36);
+   x.fillStyle='#d2a86c';x.fillRect(0,12,48,9);
+   x.fillStyle='rgba(255,255,255,.3)';x.fillRect(0,12,48,3)},
+  'M':c=>{lg(c,'#dbcfb4','#cbbda0');const x=X(c);
+   const g2=x.createLinearGradient(0,6,0,42);g2.addColorStop(0,'#c47a60');g2.addColorStop(1,'#9a4a3a');x.fillStyle=g2;
+   x.beginPath();x.roundRect(6,6,36,36,6);x.fill();
+   x.strokeStyle='rgba(255,255,255,.35)';x.lineWidth=2;x.beginPath();x.roundRect(11,11,26,26,4);x.stroke()},
+  'X':c=>{f(c,'#14101c')},
+  'q':c=>{lg(c,'#b59b72','#9a8158');const x=X(c);
+   x.fillStyle='#7e6644';x.fillRect(0,34,48,14);
+   x.fillStyle='rgba(255,255,255,.25)';x.fillRect(0,32,48,3)},
+  'k':c=>{lg(c,'#352c3e','#221c2c');const x=X(c);
+   x.strokeStyle='rgba(0,0,0,.4)';x.lineWidth=2;
+   x.beginPath();x.moveTo(10,4);x.lineTo(16,18);x.lineTo(8,30);x.stroke();
+   x.beginPath();x.moveTo(34,16);x.lineTo(40,30);x.lineTo(32,44);x.stroke();
+   x.fillStyle='rgba(255,255,255,.06)';x.fillRect(4,4,16,12);x.fillRect(26,26,16,12)},
+  'c':c=>{lg(c,'#62534c','#4a3e38');spk(c,'#74645c',14,1.8);spk(c,'#3a302c',12,1.6)},
+  'p':c=>{const x=X(c);
+   rgf(x,24,24,22,'rgba(120,228,236,.45)','rgba(120,228,236,0)');x.beginPath();x.arc(24,24,22,0,7);x.fill();
+   const g2=x.createLinearGradient(12,6,34,42);g2.addColorStop(0,'#cdf6fa');g2.addColorStop(1,'#48b4cc');x.fillStyle=g2;
+   x.beginPath();x.moveTo(24,5);x.lineTo(36,26);x.lineTo(24,44);x.lineTo(12,26);x.closePath();x.fill();
+   x.fillStyle='rgba(255,255,255,.7)';x.beginPath();x.moveTo(24,5);x.lineTo(28,26);x.lineTo(24,44);x.lineTo(21,26);x.closePath();x.fill()},
+  's':c=>{lg(c,'#efdda6','#dbc384');spk(c,'#cdb274',12,1.6);spk(c,'#f8ecbc',9,1.4)},
+  'u':c=>{lg(c,'#e2cc8e','#d0b878');const x=X(c);
+   x.fillStyle='rgba(140,116,68,.4)';
+   for(const[ux,uy]of[[14,14],[32,26],[18,38]]){x.beginPath();x.ellipse(ux,uy,7,3.5,0,0,7);x.fill()}
+   x.fillStyle='rgba(255,244,200,.5)';
+   for(const[ux,uy]of[[14,12],[32,24],[18,36]]){x.beginPath();x.ellipse(ux,uy,7,2,0,0,7);x.fill()}},
+  'd':c=>{const x=X(c);
+   rgf(x,24,38,26,'#ecd89e','#b29c66');x.beginPath();x.moveTo(0,46);x.quadraticCurveTo(10,16,26,16);x.quadraticCurveTo(42,18,48,46);x.closePath();x.fill();
+   x.fillStyle='rgba(255,248,214,.5)';x.beginPath();x.moveTo(8,36);x.quadraticCurveTo(16,20,26,18);x.quadraticCurveTo(20,24,16,36);x.closePath();x.fill()},
+  'i':c=>{lg(c,'#f7fafd','#dde9f2');spk(c,'#ffffff',12,1.8);spk(c,'#c8d9e6',8,1.4)},
+  'n':c=>{lg(c,'#f1f6fa','#dbe7f0');const x=X(c);
+   for(const[nx,ny,r]of[[14,18,9],[33,32,10]]){
+    rgf(x,nx,ny-2,r+2,'#ffffff','#dce8f2');x.beginPath();x.arc(nx,ny,r,0,7);x.fill();
+    x.fillStyle='rgba(150,176,200,.4)';x.beginPath();x.ellipse(nx,ny+r-1,r,2.5,0,0,7);x.fill()}},
+  'J':c=>{const x=X(c);
+   x.fillStyle='rgba(0,0,0,.16)';x.beginPath();x.ellipse(24,43,13,4,0,0,7);x.fill();
+   x.fillStyle='#6a4e30';x.fillRect(21,32,6,13);
+   rgf(x,24,18,16,'#4e8062','#2a5440');x.beginPath();x.moveTo(24,2);x.lineTo(40,34);x.lineTo(8,34);x.closePath();x.fill();
+   x.fillStyle='#f2f8fc';x.beginPath();x.moveTo(24,2);x.lineTo(33,20);x.quadraticCurveTo(24,24,15,20);x.closePath();x.fill()},
+  'Y':c=>{const x=X(c);
+   x.strokeStyle='#5e4c3a';x.lineCap='round';
+   x.lineWidth=5;x.beginPath();x.moveTo(24,46);x.lineTo(24,16);x.stroke();
+   x.lineWidth=3;x.beginPath();x.moveTo(24,28);x.lineTo(12,16);x.stroke();
+   x.beginPath();x.moveTo(24,22);x.lineTo(37,12);x.stroke();
+   x.lineWidth=2;x.beginPath();x.moveTo(24,16);x.lineTo(19,6);x.stroke()},
+  'm':c=>{lg(c,'#77694b','#5c523e');const x=X(c);
+   x.fillStyle='rgba(40,34,22,.4)';x.beginPath();x.ellipse(16,18,9,4,0,0,7);x.fill();x.beginPath();x.ellipse(34,36,10,4.5,0,0,7);x.fill();
+   x.fillStyle='rgba(255,255,255,.12)';x.beginPath();x.ellipse(33,34,5,1.6,0,0,7);x.fill()},
+  'h':c=>{lg(c,'#6e6347','#574e3c');const x=X(c);x.lineCap='round';
+   for(const[hx,hh,col]of[[8,30,'#7da34e'],[16,36,'#94bc5e'],[24,28,'#7da34e'],[32,38,'#a3cc6a'],[40,32,'#8ab055'],[12,24,'#94bc5e'],[36,26,'#7da34e']]){
+    x.strokeStyle=col;x.lineWidth=2.4;x.beginPath();x.moveTo(hx,46);x.quadraticCurveTo(hx+2,46-hh*.6,hx+1,46-hh);x.stroke();
+    x.fillStyle='#c8a86a';x.beginPath();x.ellipse(hx+1,46-hh,1.8,3.4,.2,0,7);x.fill()}},
+  'v':c=>{lg(c,'#503e46','#332830');const x=X(c);
+   spk(c,'#5e4a52',12,1.8);
+   for(const[vx,vy]of[[12,30],[34,14],[40,40]]){rgf(x,vx,vy,3.5,'#ffb060','rgba(255,120,40,0)');x.beginPath();x.arc(vx,vy,3.5,0,7);x.fill()}},
+  'l':c=>{lg(c,'#f6913e','#cf4f14');const x=X(c);
+   x.strokeStyle='#ffd070';x.lineWidth=3;x.lineCap='round';
+   x.beginPath();x.moveTo(4,14);x.quadraticCurveTo(20,8,30,16);x.quadraticCurveTo(40,24,45,18);x.stroke();
+   x.beginPath();x.moveTo(2,36);x.quadraticCurveTo(16,42,28,36);x.stroke();
+   x.fillStyle='rgba(80,28,8,.55)';x.beginPath();x.ellipse(38,38,7,4,0,0,7);x.fill();x.beginPath();x.ellipse(10,26,5,3,0,0,7);x.fill()}
+ };
+ for(const k in defs){const c=mkCanvas(48,48);defs[k](c);TILES[k]=c}
+}
+const TILES2={};
+function buildAnimTiles(){
+ const shifted=(src,dx,dy)=>{const c=mkCanvas(48,48),x=c.getContext('2d');
+  x.drawImage(src,dx,dy);
+  if(dx)x.drawImage(src,dx-Math.sign(dx)*48,dy);
+  if(dy)x.drawImage(src,dx,dy-Math.sign(dy)*48);
+  return c};
+ if(TILES['W'])TILES2['W']=shifted(TILES['W'],0,5);
+ if(TILES['w'])TILES2['w']=shifted(TILES['w'],0,5);
+ if(TILES['l'])TILES2['l']=shifted(TILES['l'],5,0);
+ if(TILES[','])TILES2[',']=shifted(TILES[','],3,0);
+ if(TILES['G'])TILES2['G']=shifted(TILES['G'],3,0);
+ if(TILES['h'])TILES2['h']=shifted(TILES['h'],3,0);
+}
+const FOLIAGE={'G':1,'h':1,'n':1};
+const TREETOP={};
+function buildTreetops(){
+ const tt=k=>{const c=mkCanvas(48,36),x=c.getContext('2d');
+  const rg2=(cx,cy,r,c1,c2)=>{const g=x.createRadialGradient(cx-r*.3,cy-r*.35,r*.12,cx,cy,r);g.addColorStop(0,c1);g.addColorStop(1,c2);x.fillStyle=g};
+  if(k==='T'){rg2(24,21,20,'#62b452','#2c6628');x.beginPath();x.arc(24,21,20,0,7);x.fill();
+   rg2(17,14,11,'#8ad672','#4a9a3c');x.beginPath();x.arc(17,14,11,0,7);x.fill();
+   x.fillStyle='rgba(255,255,255,.3)';x.beginPath();x.arc(13,9,4,0,7);x.fill()}
+  else{rg2(24,21,20,'#4e8062','#2a5440');x.beginPath();x.arc(24,21,20,0,7);x.fill();
+   rg2(21,13,13,'#ffffff','#d6e6ee');x.beginPath();x.arc(21,13,13,0,7);x.fill()}
+  return c};
+ TREETOP['T']=tt('T');TREETOP['J']=tt('J');
+}
+function tileAt(m,x,y){if(x<0||y<0||x>=m.w||y>=m.h)return m.oob||'T';return m.grid[y][x]}
+function npcAt(m,x,y){return m.npcs.find(n=>n.x===x&&n.y===y&&!npcGone(n))}
+function npcGone(n){
+ if(n.kind==='guard')return G.badges>n.gate;
+ if(n.kind==='rival')return G.flags['rival'+n.stage];
+ if(n.kind==='legend')return!G.flags.champion||G.flags[n.leg.flag];
+ if(n.kind==='spire')return!G.flags.champion;
+ if(n.kind==='item')return!!G.flags[n.flag];
+ return false;
+}
+function solidAt(m,x,y){
+ const t=tileAt(m,x,y);
+ if(SOLID[t])return true;
+ if(npcAt(m,x,y))return true;
+ return false;
+}
+const DIRS={up:[0,-1],down:[0,1],left:[-1,0],right:[1,0]};
+
+function tryStep(dir){
+ if(player.moving||busy)return;
+ if(G.facing!==dir){G.facing=dir;player.faceT=performance.now();return}
+ if(performance.now()-(player.faceT||0)<70)return;
+ const[dx,dy]=DIRS[dir];const m=curMap();
+ const nx=G.x+dx,ny=G.y+dy;
+ // edge exits
+ if(nx<0||ny<0||nx>=m.w||ny>=m.h){
+  const side=ny<0?'n':ny>=m.h?'s':null;
+  if(side&&m.exits[side]){gotoMap(m.exits[side],side);return}
+  return;
+ }
+ if(solidAt(m,nx,ny))return;
+ player.moving=true;player.t=0;player.fx=G.x;player.fy=G.y;
+ G.x=nx;G.y=ny;player.step^=1;
+}
+function gotoMap(id,fromSide){
+ const m=WORLD[id];G.map=id;
+ if(fromSide==='n'){ // we exited north -> enter target from its south
+  G.y=m.h-1;G.x=findOpen(m,m.h-2);G.facing='up';
+ }else{
+  G.y=0;G.x=findOpen(m,1);G.facing='down';
+ }
+ // ensure standing tile walkable
+ if(SOLID[tileAt(m,G.x,G.y)])G.grid; // noop safe
+ saveGame();
+}
+function findOpen(m,row){
+ let best=Math.floor(m.w/2);
+ for(let off=0;off<m.w;off++){for(const x of[best+off,best-off]){if(x>0&&x<m.w-1&&!SOLID[tileAt(m,x,row)]&&!SOLID[tileAt(m,x,row===1?0:m.h-1)])return x;}}
+ return best;
+}
+async function arrived(){
+ const m=curMap();
+ // warp (doors / mats)
+ const w=m.warps[wk(G.x,G.y)];
+ if(w){
+  if(w.out){ // interior exit
+   const o=WORLD[w.out];
+   if(w.edge){G.map=w.out;G.y=0;G.x=findOpen(o,1);G.facing='down';}
+   else{
+    // find this interior's door in the outside map
+    let dpos=null;for(const k in o.warps){if(o.warps[k].to===m.id){const[xx,yy]=k.split(',').map(Number);dpos={x:xx,y:yy}}}
+    G.map=w.out;G.x=dpos?dpos.x:2;G.y=dpos?dpos.y+1:2;G.facing='down';
+   }
+  }else{G.map=w.to;G.x=w.x;G.y=w.y;G.facing='up';}
+  saveGame();return;
+ }
+ // trainer line-of-sight
+ for(const n of m.npcs){
+  if(n.kind!=='trainer'&&n.kind!=='rival')continue;
+  if(npcGone(n))continue;
+  if(n.trainer&&G.flags[n.trainer.flag])continue;
+  const[dx,dy]=DIRS[n.face||'down'];
+  for(let d=1;d<=(n.range||3);d++){
+   const sx=n.x+dx*d,sy=n.y+dy*d;
+   if(SOLID[tileAt(m,sx,sy)])break;
+   if(sx===G.x&&sy===G.y){await trainerSpotted(n);return}
+  }
+ }
+ // wild encounters by terrain
+ const _et=ENC_TILES[tileAt(m,G.x,G.y)];
+ if(_et&&m.enc&&Math.random()<_et){
+  await wildEncounter(m.enc);
+ }
+}
+async function trainerSpotted(n){
+ busy=true;
+ if(n.kind==='rival'){await rivalBattle(n);busy=false;return}
+ const t=n.trainer;
+ await showText(t.pre);
+ const res=await battle({kind:'trainer',name:t.name,team:t.team.map(([s,l])=>makeMon(s,l)),prize:t.prize,winText:t.win});
+ if(res.win){G.flags[t.flag]=true;saveGame()}
+ busy=false;
+}
+async function wildEncounter(enc){
+ busy=true;
+ const tot=enc.reduce((a,e)=>a+e[1],0);let r=Math.random()*tot,sp=enc[0];
+ for(const e of enc){r-=e[1];if(r<=0){sp=e;break}}
+ const lv=rint(mulberry32(Date.now()&0xffff),sp[2],sp[3]);
+ await battle({kind:'wild',foe:makeMon(sp[0],lv)});
+ busy=false;
+}
+
+/* interact (A button) */
+async function interact(){
+ if(busy||player.moving)return;
+ const m=curMap();const[dx,dy]=DIRS[G.facing];
+ let tx=G.x+dx,ty=G.y+dy;
+ // counters: talk across them
+ if(tileAt(m,tx,ty)==='C'){tx+=dx;ty+=dy}
+ const sign=m.signs&&m.signs[wk(G.x+dx,G.y+dy)];
+ if(sign){busy=true;await showText(sign);busy=false;return}
+ const n=npcAt(m,tx,ty)||m.npcs.find(nn=>nn.x===tx&&nn.y===ty&&!npcGone(nn));
+ if(!n)return;
+ busy=true;
+ n.faceTo=G.facing==='up'?'down':G.facing==='down'?'up':G.facing==='left'?'right':'left';
+ try{
+  if(n.kind==='npc'||n.kind==='guard'){
+   await showText(n.kind==='guard'&&G.badges>n.gate?n.openDialog:n.dialog);
+  }
+  else if(n.kind==='item'){
+   G.bag[n.item]=(G.bag[n.item]||0)+1;G.flags[n.flag]=true;
+   await showText('You found a '+ITEMS[n.item].n+'!');saveGame();
+  }
+  else if(n.kind==='nurse')await nurseHeal();
+  else if(n.kind==='pc')await pcMenu();
+  else if(n.kind==='shop')await shopMenu();
+  else if(n.kind==='prof')await professor();
+  else if(n.kind==='leader')await gymLeader(n.gym);
+  else if(n.kind==='trainer'){
+   if(G.flags[n.trainer.flag])await showText(n.trainer.name+': '+n.trainer.win);
+   else{await showText(n.trainer.pre);
+    const res=await battle({kind:'trainer',name:n.trainer.name,team:n.trainer.team.map(([s,l])=>makeMon(s,l)),prize:n.trainer.prize,winText:n.trainer.win});
+    if(res.win){G.flags[n.trainer.flag]=true;saveGame()}}
+  }
+  else if(n.kind==='rival')await rivalBattle(n);
+  else if(n.kind==='legend')await legendBattle(n);
+  else if(n.kind==='league')await leagueChallenge();
+  else if(n.kind==='spire')await battleSpire();
+ }finally{busy=false}
+}
+async function nurseHeal(){
+ sfx('heal');
+ await showText('Nurse: Welcome to the Beast Center! Let me heal your beasts to full health.');
+ G.party.forEach(healMon);
+ const m=curMap();
+ G.lastHeal={map:G.map.startsWith('center')?('c'+G.map.slice(6)):G.map,x:0,y:0};
+ const om=WORLD[G.lastHeal.map];if(om&&om.heal){G.lastHeal.x=om.heal.x;G.lastHeal.y=om.heal.y}
+ await showText('Nurse: All better! We hope to see you again... wait, no. Stay safe out there!');
+ saveGame();
+}
+async function professor(){
+ if(!G.flags.starter){
+  await showText('Prof. Maple: Ah, '+G.name+'! Perfect timing. The world of Veridia is filled with wild creatures we call beasts.');
+  await showText('Prof. Maple: A tamer\u2019s journey begins with a partner. I have three young beasts here \u2014 choose carefully!');
+  const c=await showChoice(['Sproutle (Grass)','Cindcub (Fire)','Puddlit (Water)']);
+  const sp=[1,4,7][c];
+  G.party.push(makeMon(sp,5));G.flags.starter=sp;G.seen[sp]=1;G.caught[sp]=1;
+  await showText('You chose '+SPECIES[sp].n+'! It looks thrilled to meet you.');
+  await showText('Prof. Maple: Wonderful! Here \u2014 take these Capture Orbs and a few Potions too. Eight Gym Badges open the door to the Veridia League. Good luck!');
+  await showText('Kai burst in, grabbed the beast strong against yours, smirked at you, and ran off. Classic Kai.');
+  saveGame();
+ }else{
+  await showText('Prof. Maple: Your BeastDex has logged '+Object.keys(G.caught).length+' of '+(SPECIES.length-1)+' species caught. Keep going!');
+ }
+}
+async function gymLeader(gi){
+ const gym=GYMS[gi];
+ const beaten=G.badges>gi;
+ const rematch=beaten&&G.flags.champion;
+ if(beaten&&!rematch){await showText(gym.leader+': '+gym.win);return}
+ await showText(gym.leader+': '+gym.intro+(rematch?' (Rematch \u2014 my true team this time!)':''));
+ const boost=rematch?14:0;
+ const team=gym.team.map(([s,l])=>makeMon(s,l+boost));
+ const res=await battle({kind:'trainer',name:'Leader '+gym.leader,team,prize:gym.prize*(rematch?2:1),winText:gym.win});
+ if(res.win&&!beaten){
+  G.badges=gi+1;
+  await showText('You received the '+gym.badge+'!  ('+G.badges+'/8)');
+  saveGame();
+ }
+}
+async function rivalBattle(n){
+ const stage=n.stage;
+ if(G.flags['rival'+stage])return;
+ if(stage===3&&!G.flags.champion===false){} // noop
+ const lines=RIVAL_LINES[stage];
+ await showText(lines.pre);
+ const team=rivalTeam(stage,G.flags.starter||1).map(([s,l])=>makeMon(s,l));
+ const res=await battle({kind:'trainer',name:'Rival Kai',team,prize:500+stage*1200,winText:lines.win});
+ if(res.win){G.flags['rival'+stage]=true;saveGame()}
+ else await showText(lines.lose);
+}
+async function legendBattle(n){
+ const L=n.leg;
+ await showText('Something ancient stirs... '+SPECIES[L.sp].n.toUpperCase()+' appeared!');
+ const res=await battle({kind:'wild',foe:makeMon(L.sp,L.lv),legend:true});
+ if(res.caught||res.win)G.flags[L.flag]=true;
+ saveGame();
+}
+async function leagueChallenge(){
+ if(G.flags.champion){await showText('Attendant: Welcome back, Champion '+G.name+'! The Hall of Fame remembers you. The Battle Spire awaits to your right.');return}
+ if(G.badges<8){await showText('Attendant: The Veridia League requires all eight badges. You have '+G.badges+'.');return}
+ await showText('Attendant: Beyond this point: the Elite Four, then the Champion. Five battles, no turning back, no Beast Center. Ready?');
+ if(await showChoice(['Begin the challenge','Not yet'])!==0)return;
+ for(let i=0;i<4;i++){
+  const e=ELITE[i];
+  await showText(e.name+' of the Elite Four: '+e.intro);
+  const res=await battle({kind:'trainer',name:'Elite '+e.name,team:e.team.map(([s,l])=>makeMon(s,l)),prize:e.prize,winText:'...The next door is open.'});
+  if(!res.win)return;
+ }
+ await showText('Champion '+CHAMPION.name+': '+CHAMPION.intro);
+ const res=await battle({kind:'trainer',name:'Champion '+CHAMPION.name,team:CHAMPION.team.map(([s,l])=>makeMon(s,l)),prize:CHAMPION.prize,winText:CHAMPION.win});
+ if(res.win){
+  G.flags.champion=true;
+  await showText('\u2728 '+G.name+' and their beasts were inducted into the VERIDIA HALL OF FAME! \u2728');
+  await showText('THE END... or is it? Legendary beasts now stir in Mt. Hollow, the Whiteout Snowfield and Victory Road \u2014 and something timeless dreams deep in the Verdant Forest. Gym Leaders accept rematches. The Battle Spire is open in Summit Hall!');
+  saveGame();
+ }
+}
+async function battleSpire(){
+ await showText('Spire Keeper: The Battle Spire! Endless challengers, rising power. Your record: '+(G.spireBest||0)+' wins. Your beasts are restored between bouts. Begin?');
+ if(await showChoice(['Climb the Spire','Maybe later'])!==0)return;
+ let streak=0;
+ const names=['Ace Juno','Ace Pax','Veteran Orr','Veteran Lux','Master Sable','Master Wren'];
+ while(true){
+  G.party.forEach(healMon);
+  const lv=Math.min(50+streak*2,100);
+  const pool=[11,13,16,18,20,22,24,26,28,30,33,35,37,38,40];
+  const rng=mulberry32(Date.now()&0xfffff);
+  const team=[0,1,2].map(()=>makeMon(pick(rng,pool),lv));
+  const res=await battle({kind:'trainer',name:names[streak%names.length]+' (Lv'+lv+')',team,prize:800+streak*400,winText:'The Spire rises higher...',noBlackout:true});
+  if(!res.win)break;
+  streak++;
+  if(streak>(G.spireBest||0)){G.spireBest=streak}
+  await showText('Win streak: '+streak+'!  Continue climbing?');
+  if(await showChoice(['Next battle','Cash out'])!==0)break;
+ }
+ G.party.forEach(healMon);
+ await showText('Spire Keeper: A streak of '+streak+'! Best: '+G.spireBest+'. Your beasts have been fully restored.');
+ saveGame();
+}
+
+/* render loop */
+function loop(ts){
+ raf=requestAnimationFrame(loop);
+ const dt=Math.min(50,ts-(frameT||ts));frameT=ts;
+ if(player.moving){
+  player.t+=dt/(input.run?105:170);
+  if(player.t>=1){player.moving=false;player.t=0;arrived()}
+ }else if(input.dir&&!busy){tryStep(input.dir)}
+ draw(ts);
+}
+/* ----- HD-2D renderer: 48px tiles, smooth env, crisp sprites, tilted plane ----- */
+let bcv=null,bctx=null,PARTS=[],partKind=null,lastDrawTs=0;
+const VW2=19,VH2=VH+4,PSP=1.24;
+function ensureBuf(){
+ if(bcv)return;
+ bcv=mkCanvas(VW2*TS,VH2*TS);
+ bctx=bcv.getContext('2d');bctx.imageSmoothingEnabled=true;
+}
+function foliageOver(tx,ty2,ox,oy,m,ts){
+ const t=tileAt(m,tx,ty2);
+ if(!FOLIAGE[t])return;
+ let img=TILES[t];if(TILES2[t]&&((ts/450)|0)%2)img=TILES2[t];
+ bctx.drawImage(img,0,27,48,21,Math.round(tx*TS+ox),Math.round(ty2*TS+oy)+27,48,21);
+}
+function tintFor(){
+ if(G&&G.tint===false)return null;
+ const h=new Date().getHours();
+ if(h>=20||h<5)return'#8a93c4';
+ if(h>=17)return'#eccaa4';
+ if(h<8)return'#fdeeda';
+ return null;
+}
+function updParts(m,dt){
+ const kind=m.ground==='i'?'snow':m.ground==='v'?'ember':null;
+ if(kind!==partKind){
+  partKind=kind;PARTS=[];
+  if(kind)for(let i=0;i<30;i++)PARTS.push({x:Math.random()*bcv.width,y:Math.random()*bcv.height,v:34+Math.random()*60,ph:Math.random()*6});
+ }
+ if(!kind)return;
+ for(const p of PARTS){
+  if(kind==='snow'){p.y+=p.v*dt/1000;p.x+=Math.sin(p.ph+p.y/40)*1.1;if(p.y>bcv.height){p.y=-4;p.x=Math.random()*bcv.width}}
+  else{p.y-=p.v*dt/1000;p.x+=Math.sin(p.ph+p.y/30)*0.8;if(p.y<-4){p.y=bcv.height+4;p.x=Math.random()*bcv.width}}
+ }
+ bctx.fillStyle=kind==='snow'?'rgba(255,255,255,.92)':'rgba(250,150,60,.9)';
+ for(const p of PARTS){
+  bctx.beginPath();bctx.arc(p.x,p.y,kind==='snow'?2.4:1.7,0,7);bctx.fill();
+ }
+}
+function drawTile(m,x,y,ox,oy,ts){
+ const t=tileAt(m,x,y);const dx2=Math.round(x*TS+ox),dy2=Math.round(y*TS+oy);
+ let img=TILES[t]||TILES['.'];
+ if(TILES2[t]&&((ts/450)|0)%2)img=TILES2[t];
+ if(OVERLAY[t]){bctx.drawImage(TILES[m.ground||'.'],dx2,dy2);bctx.drawImage(img,dx2,dy2)}
+ else bctx.drawImage(img,dx2,dy2);
+ if(t==='-'){
+  bctx.fillStyle='rgba(96,74,42,.4)';
+  if(tileAt(m,x,y-1)!=='-')bctx.fillRect(dx2,dy2,48,3);
+  if(tileAt(m,x,y+1)!=='-')bctx.fillRect(dx2,dy2+45,48,3);
+  if(tileAt(m,x-1,y)!=='-')bctx.fillRect(dx2,dy2,3,48);
+  if(tileAt(m,x+1,y)!=='-')bctx.fillRect(dx2+45,dy2,3,48);
+ }
+ if(t==='W'||t==='w'){
+  const land=c2=>c2!=='W'&&c2!=='w'&&c2!=='X';
+  bctx.fillStyle='rgba(238,248,255,.8)';
+  if(land(tileAt(m,x,y-1)))bctx.fillRect(dx2,dy2,48,5);
+  if(land(tileAt(m,x,y+1)))bctx.fillRect(dx2,dy2+43,48,5);
+  if(land(tileAt(m,x-1,y)))bctx.fillRect(dx2,dy2,5,48);
+  if(land(tileAt(m,x+1,y)))bctx.fillRect(dx2+43,dy2,5,48);
+ }
+}
+function crisp(fn){bctx.imageSmoothingEnabled=false;fn();bctx.imageSmoothingEnabled=true}
+function draw(ts){
+ if(!G){return}
+ ensureBuf();
+ const dt=Math.min(60,ts-(lastDrawTs||ts));lastDrawTs=ts;
+ const m=curMap();
+ bctx.fillStyle='#14101c';bctx.fillRect(0,0,bcv.width,bcv.height);
+ let px=G.x,py=G.y;
+ if(player.moving){px=player.fx+(G.x-player.fx)*player.t;py=player.fy+(G.y-player.fy)*player.t}
+ let camx=clamp(px-VW2/2+.5,0,Math.max(0,m.w-VW2)),camy=clamp(py-VH2/2+.5-(m.indoor?0:0.7),0,Math.max(0,m.h-VH2));
+ if(m.w<=VW2)camx=(m.w-VW2)/2;if(m.h<=VH2)camy=(m.h-VH2)/2;
+ const ox=-camx*TS,oy=-camy*TS;
+ const y0=Math.floor(camy)-1,y1=camy+VH2+1,x0=Math.floor(camx)-1,x1=camx+VW2+1;
+ for(let y=y0;y<y1;y++)for(let x=x0;x<x1;x++)drawTile(m,x,y,ox,oy,ts);
+ const actors=[];
+ for(const n of m.npcs){
+  if(npcGone(n))continue;
+  actors.push({y:n.y,n});
+ }
+ actors.push({y:py,player:true});
+ actors.sort((a2,b2)=>a2.y-b2.y);
+ for(const a2 of actors){
+  if(a2.player){
+   const ppx=Math.round(px*TS+ox),ppy=Math.round(py*TS+oy);
+   bctx.fillStyle='rgba(0,0,0,.22)';bctx.beginPath();bctx.ellipse(ppx+24,ppy+40,16,6.5,0,0,7);bctx.fill();
+   const wf=player.moving?(player.t<0.55?(player.step?1:2):0):0;
+   crisp(()=>bctx.drawImage(personSprite(0,G.facing,wf),0,0,16,16,ppx,ppy-8,48,48));
+   foliageOver(Math.round(px),Math.round(py),ox,oy,m,ts);
+   continue;
+  }
+  const n=a2.n;
+  if(n.kind==='item'){
+   const ix=Math.round(n.x*TS+ox)+12,iy=Math.round(n.y*TS+oy)+12;
+   const bob=Math.sin(ts/300)>0?0:-3;
+   bctx.fillStyle='rgba(0,0,0,.2)';bctx.beginPath();bctx.ellipse(ix+12,iy+27,15,6,0,0,7);bctx.fill();
+   bctx.fillStyle='#1c1826';bctx.beginPath();bctx.roundRect(ix-3,iy-3+bob,30,30,7);bctx.fill();
+   bctx.fillStyle='#e8c43a';bctx.beginPath();bctx.roundRect(ix,iy+bob,24,24,5);bctx.fill();
+   bctx.fillStyle='#f8ecb0';bctx.beginPath();bctx.roundRect(ix+3,iy+3+bob,9,9,3);bctx.fill();
+   continue;
+  }
+  if(n.kind==='legend'){
+   const lx=Math.round(n.x*TS+ox),ly=Math.round(n.y*TS+oy);
+   bctx.fillStyle='rgba(0,0,0,.25)';bctx.beginPath();bctx.ellipse(lx+24,ly+42,28,9,0,0,7);bctx.fill();
+   crisp(()=>bctx.drawImage(monSprite(n.leg.sp,false),0,0,40,40,lx-26,ly-56,100,100));
+   continue;
+  }
+  const nx2=Math.round(n.x*TS+ox),ny2=Math.round(n.y*TS+oy);
+  bctx.fillStyle='rgba(0,0,0,.22)';bctx.beginPath();bctx.ellipse(nx2+24,ny2+40,16,6.5,0,0,7);bctx.fill();
+  crisp(()=>bctx.drawImage(personSprite(n.pal||0,n.faceTo||n.face||'down',0),0,0,16,16,nx2,ny2-8,48,48));
+  foliageOver(n.x,n.y,ox,oy,m,ts);
+ }
+ for(let y=y0;y<y1;y++)for(let x=x0;x<x1;x++){
+  const t=tileAt(m,x,y);
+  if(TREETOP[t])bctx.drawImage(TREETOP[t],Math.round(x*TS+ox),Math.round(y*TS+oy)-21);
+ }
+ if(!m.indoor){
+  updParts(m,dt);
+  const tc=tintFor();
+  if(tc){
+   bctx.globalCompositeOperation='multiply';
+   bctx.fillStyle=tc;bctx.fillRect(0,0,bcv.width,bcv.height);
+   bctx.globalCompositeOperation='source-over';
+  }
+ }
+ composite(m);
+}
+function composite(m){
+ const SW=VW*TS,SH=VH*TS;
+ ctx.fillStyle='#0c0a12';ctx.fillRect(0,0,SW,SH);
+ if(m.indoor||(G&&G.flat)){
+  ctx.drawImage(bcv,(bcv.width-SW)/2,(bcv.height-SH)/2,SW,SH,0,0,SW,SH);
+  vignette(SW,SH);return;
+ }
+ const Hb=bcv.height;
+ for(let y=0;y<SH;y+=2){
+  const t=y/(SH-2);
+  const proj=(PSP*t)/(1+(PSP-1)*t);
+  const srcY=proj*(Hb-6);
+  const srcW=clamp(SW*(PSP-(PSP-1)*1.7*t),SW*0.85,bcv.width-1);
+  ctx.drawImage(bcv,(bcv.width-srcW)/2,srcY,srcW,5,0,y,SW,2);
+ }
+ vignette(SW,SH);
+}
+let vigCache=null;
+function vignette(SW,SH){
+ if(!vigCache){
+  vigCache=mkCanvas(SW,SH);
+  const v=vigCache.getContext('2d');
+  const g=v.createRadialGradient(SW/2,SH*0.42,SH*0.45,SW/2,SH/2,SH*0.95);
+  g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(8,4,16,.34)');
+  v.fillStyle=g;v.fillRect(0,0,SW,SH);
+ }
+ ctx.drawImage(vigCache,0,0);
+}
+
+/* ----- sfx (WebAudio bleeps) ----- */
+let AC=null;
+function sfx(kind){
+ if(!G||G.sfx===false||typeof window==='undefined')return;
+ try{
+  if(!AC)AC=new(window.AudioContext||window.webkitAudioContext)();
+  if(AC.state==='suspended')AC.resume();
+  const P={blip:[520,.045,'square',.035],sel:[660,.05,'square',.045],hit:[150,.1,'sawtooth',.09],
+   faint:[300,.32,'sawtooth',.14,70],heal:[523,.14,'sine',.09,880],lvl:[523,.16,'square',.07,1046],
+   throwo:[330,.12,'sine',.06,720]}[kind]||[440,.05,'square',.04];
+  const t=AC.currentTime,o=AC.createOscillator(),g=AC.createGain();
+  o.connect(g);g.connect(AC.destination);
+  o.type=P[2];o.frequency.setValueAtTime(P[0],t);
+  if(P[4])o.frequency.linearRampToValueAtTime(P[4],t+P[1]);
+  g.gain.setValueAtTime(P[3],t);g.gain.exponentialRampToValueAtTime(.0008,t+P[1]);
+  o.start(t);o.stop(t+P[1]+.03);
+ }catch(e){}
+}
+const delay=ms=>new Promise(r=>setTimeout(r,ms));
+function fx(id,cls,dur,keep){
+ return new Promise(r=>{
+  const el=document.getElementById(id);if(!el){r();return}
+  el.classList.remove(cls);void el.offsetWidth;el.classList.add(cls);
+  setTimeout(()=>{if(!keep)el.classList.remove(cls);r()},dur);
+ });
+}
+const BBG={'.':'linear-gradient(#9ecdea 55%,#cfe6b0 55%)','c':'linear-gradient(#241c2c 55%,#4a3c40 55%)',
+ 's':'linear-gradient(#a8d4ee 55%,#e6d49e 55%)','i':'linear-gradient(#cfe4f2 55%,#eef6fa 55%)',
+ 'v':'linear-gradient(#3a2228 55%,#5a3034 55%)','m':'linear-gradient(#8aa898 55%,#6a6244 55%)',
+ 'f':'linear-gradient(#3a4250 55%,#5a6478 55%)'};
+function battleFlash(){
+ return new Promise(r=>{
+  const f=document.getElementById('fxflash');if(!f){r();return}
+  f.classList.remove('go');void f.offsetWidth;f.classList.add('go');
+  setTimeout(()=>{f.classList.remove('go');r()},560);
+ });
+}
+/* ----- chiptune sequencer ----- */
+const MUS={
+ ow:{bpm:104,bass:[36,0,43,0,41,0,43,0,36,0,43,0,45,0,43,0],
+     lead:[60,64,67,72,0,67,69,67,64,62,64,67,0,64,62,60]},
+ bt:{bpm:148,bass:[33,33,0,33,36,36,0,36,31,31,0,31,38,38,40,41],
+     lead:[69,0,72,76,0,74,72,69,71,0,74,77,0,76,74,71]}
+};
+let musName=null,musTimer=null,musNext=0,musStep=0;
+function midiF(n){return 440*Math.pow(2,(n-69)/12)}
+function mnote(f,t,d,type,v){
+ const o=AC.createOscillator(),g=AC.createGain();
+ o.type=type;o.frequency.value=f;o.connect(g);g.connect(AC.destination);
+ g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.001,t+d);
+ o.start(t);o.stop(t+d+.02);
+}
+function musTick(){
+ if(!musName||!AC)return;
+ const song=MUS[musName],spb=30/song.bpm;
+ while(musNext<AC.currentTime+0.22){
+  const i=musStep%16,b=song.bass[i],l=song.lead[i];
+  if(b)mnote(midiF(b),musNext,spb*0.92,'triangle',.07);
+  if(l)mnote(midiF(l),musNext,spb*0.8,'square',.04);
+  musNext+=spb;musStep++;
+ }
+}
+function setMusic(name){
+ if(G&&G.music===false)name=null;
+ if(name===musName)return;
+ musName=name;musStep=0;
+ if(name){
+  try{
+   if(!AC)AC=new(window.AudioContext||window.webkitAudioContext)();
+   if(AC.state==='suspended')AC.resume();
+  }catch(e){musName=null;return}
+  musNext=AC.currentTime+0.06;
+  if(!musTimer)musTimer=setInterval(musTick,80);
+ }else if(musTimer){clearInterval(musTimer);musTimer=null}
+}
+
+/* ============================================================
+   BATTLE SYSTEM
+   ============================================================ */
+const B={on:false};
+function calcDamage(att,def,mv,aSt,dSt){
+ const a=mv.c==='P'?bStat(att,'atk',aSt):bStat(att,'spa',aSt);
+ const d=mv.c==='P'?bStat(def,'def',dSt):bStat(def,'spd',dSt);
+ let dmg=(((2*att.lv/5+2)*mv.p*a/d)/50)+2;
+ const low=abilityOf(att)==='Resolve'&&att.hp<=Math.floor(mMax(att)/3);
+ const stab=SPECIES[att.sp].t.includes(mv.t)?(low?1.95:1.5):1;
+ const eff=effMult(mv.t,SPECIES[def.sp].t);
+ const crit=Math.random()<(mv.hc?0.25:1/16)?1.5:1;
+ if(att.held==='powerband'&&mv.c==='P')dmg*=1.1;
+ if(att.held==='wisplens'&&mv.c==='S')dmg*=1.1;
+ dmg*=stab*eff*crit*(0.85+Math.random()*0.15);
+ return{dmg:Math.max(1,Math.floor(dmg)),eff,crit:crit>1};
+}
+function xpNeed(lv){return lv*lv*lv}
+function aiPick(foe,ally){
+ const usable=foe.moves.filter(m=>m.pp>0);
+ if(!usable.length)return{id:'tackle',pp:1};
+ let best=null,bestScore=-1;
+ for(const m of usable){
+  const mv=MOVES[m.id];let s;
+  if(mv.c==='X')s=18+Math.random()*20;
+  else s=mv.p*effMult(mv.t,SPECIES[ally.sp].t)*(SPECIES[foe.sp].t.includes(mv.t)?1.5:1)*(0.9+Math.random()*0.2);
+  if(s>bestScore){bestScore=s;best=m}
+ }
+ return best;
+}
+function hpbarHTML(frac){
+ const pct=Math.round(frac*100);
+ const col=frac>.5?'#52c46a':frac>.2?'#e8c43a':'#e05a4a';
+ return'<div class="hpwrap"><div class="hpfill" style="width:'+pct+'%;background:'+col+'"></div></div>';
+}
+function bPanel(el,mon,showXP){
+ const max=mMax(mon);
+ el.innerHTML='<div class="bpname">'+mName(mon)+(mon.status?' <span class="stat-tag">'+mon.status+'</span>':'')+'<span class="bplv">Lv'+mon.lv+'</span></div>'+
+  hpbarHTML(mon.hp/max)+
+  '<div class="bphp">'+mon.hp+' / '+max+'</div>'+
+  (showXP?'<div class="xpwrap"><div class="xpfill" style="width:'+Math.round(100*(mon.xp-xpNeed(mon.lv))/(xpNeed(mon.lv+1)-xpNeed(mon.lv)))+'%"></div></div>':'');
+}
+function refreshPanels(){
+ bPanel(document.getElementById('foepanel'),B.foe,false);
+ bPanel(document.getElementById('allypanel'),B.ally,true);
+}
+function setSprites(){
+ const fc=document.getElementById('foespr'),ac2=document.getElementById('allyspr');
+ fc.className='';ac2.className='';
+ fc.replaceChildren(monSprite(B.foe.sp,false,B.foe.shiny));
+ ac2.replaceChildren(monSprite(B.ally.sp,true,B.ally.shiny));
+ fx('foespr','enterR',440);fx('allyspr','popOut',420);
+}
+async function applyMove(user,target,uSt,tSt,mvSlot,userName,targetName){
+ const mv=MOVES[mvSlot.id];
+ await bText(userName+' used '+mv.n+'!');
+ if(mv.a&&Math.random()*100>mv.a){await bText('It missed!');return}
+ if(mv.c==='X'){
+  if(mv.heal){const max=mMax(user);const h=Math.floor(max*mv.heal);user.hp=Math.min(max,user.hp+h);await bText(userName+'\u2019s health was restored!')}
+  if(mv.chg)for(const[stat,d,tg]of mv.chg){
+   const st=tg==='self'?uSt:tSt;st[stat]=clamp((st[stat]||0)+d,-6,6);
+   await bText((tg==='self'?userName:targetName)+'\u2019s '+{atk:'Attack',def:'Defense',spa:'Sp. Atk',spd:'Sp. Def',spe:'Speed'}[stat]+(d>0?(d>1?' rose sharply!':' rose!'):(d<-1?' fell sharply!':' fell!')));
+  }
+  if(mv.st&&mv.st[0]!=='FLN'&&!target.status&&Math.random()*100<mv.st[1]){
+   target.status=mv.st[0];if(mv.st[0]==='SLP')target.slpT=rint(mulberry32(Date.now()&0xffff),1,3);
+   await bText(targetName+' is '+STATUS_NAMES[mv.st[0]]+'!');
+  }else if(mv.st&&mv.st[0]!=='FLN'&&target.status){await bText('It failed!')}
+  refreshPanels();return;
+ }
+ const uEl=user===B.ally?'allyspr':'foespr',tEl=user===B.ally?'foespr':'allyspr';
+ await fx(uEl,user===B.ally?'lungeA':'lungeF',240);
+ const hits=mv.multi?mv.multi[0]+Math.floor(Math.random()*(mv.multi[1]-mv.multi[0]+1)):1;
+ let total=0,anyCrit=false,eff=1,landed=0;
+ for(let h=0;h<hits;h++){
+  if(target.hp<=0)break;
+  const r=calcDamage(user,target,mv,uSt,tSt);
+  eff=r.eff;
+  if(r.eff===0)break;
+  target.hp=Math.max(0,target.hp-r.dmg);total+=r.dmg;landed++;
+  if(r.crit)anyCrit=true;
+ }
+ if(eff===0){await bText('It doesn\u2019t affect '+targetName+'...');return}
+ if(landed>0){sfx('hit');fx(tEl,'hitflash',380)}
+ refreshPanels();
+ if(hits>1)await bText('Hit '+landed+' time'+(landed===1?'':'s')+'!');
+ if(anyCrit)await bText('A critical hit!');
+ if(eff>1)await bText('It\u2019s super effective!');
+ if(eff<1)await bText('It\u2019s not very effective...');
+ if(mv.drain&&total>0){user.hp=Math.min(mMax(user),user.hp+Math.max(1,Math.floor(total*mv.drain)));refreshPanels();await bText(userName+' drained energy!')}
+ if(mv.recoil&&total>0){user.hp=Math.max(0,user.hp-Math.max(1,Math.floor(total*mv.recoil)));refreshPanels();await bText(userName+' was hurt by recoil!')}
+ if(target.hp>0&&target.held==='oranberry'&&target.hp<=Math.floor(mMax(target)/2)){
+  target.held=null;target.hp=Math.min(mMax(target),target.hp+30);
+  refreshPanels();sfx('heal');
+  await bText(targetName+'\u2019s Oran Berry restored its HP!');
+ }
+ if(mv.st&&target.hp>0&&Math.random()*100<mv.st[1]){
+  if(mv.st[0]==='FLN'){target._fln=true}
+  else if(!target.status){
+   target.status=mv.st[0];if(mv.st[0]==='SLP')target.slpT=2;
+   refreshPanels();await bText(targetName+' is '+STATUS_NAMES[mv.st[0]]+'!');
+  }
+ }
+}
+async function preMove(mon,name){ // returns true if can act
+ if(mon.status==='FRZ'){
+  if(Math.random()<.2){mon.status=null;await bText(name+' thawed out!')}
+  else{await bText(name+' is frozen solid!');return false}
+ }
+ if(mon.status==='SLP'){
+  if(mon.slpT>0){mon.slpT--;await bText(name+' is fast asleep.');return false}
+  mon.status=null;await bText(name+' woke up!');
+ }
+ if(mon.status==='PAR'&&Math.random()<.25){await bText(name+' is fully paralyzed!');return false}
+ return true;
+}
+async function endTurnStatus(mon,name){
+ if(mon.hp<=0)return;
+ if(mon.status==='PSN'){mon.hp=Math.max(0,mon.hp-Math.max(1,Math.floor(mMax(mon)/8)));refreshPanels();await bText(name+' is hurt by poison!')}
+ if(mon.status==='BRN'){mon.hp=Math.max(0,mon.hp-Math.max(1,Math.floor(mMax(mon)/16)));refreshPanels();await bText(name+' is hurt by its burn!')}
+ if(mon.hp>0&&mon.held==='mosscharm'&&mon.hp<mMax(mon)){
+  mon.hp=Math.min(mMax(mon),mon.hp+Math.max(1,Math.floor(mMax(mon)/16)));
+  refreshPanels();await bText(name+'\u2019s Moss Charm restored a little HP.');
+ }
+}
+async function gainXP(mon,foe,isTrainer,nParts){
+ if(mon.hp<=0||mon.lv>=100)return;
+ let xp=Math.floor(SPECIES[foe.sp].bx*foe.lv/7/Math.max(1,nParts));
+ if(isTrainer)xp=Math.floor(xp*1.5);
+ await bText(mName(mon)+' gained '+xp+' XP!');
+ mon.xp+=xp;
+ while(mon.lv<100&&mon.xp>=xpNeed(mon.lv+1)){
+  const oldMax=mMax(mon);
+  mon.lv++;
+  mon.hp=Math.min(mMax(mon),mon.hp+(mMax(mon)-oldMax));
+  refreshPanels();
+  sfx('lvl');
+  await bText(mName(mon)+' grew to Lv'+mon.lv+'!');
+  // learn moves
+  for(const[lv,id]of SPECIES[mon.sp].ls){
+   if(lv!==mon.lv)continue;
+   if(mon.moves.some(m=>m.id===id))continue;
+   if(mon.moves.length<4){mon.moves.push({id,pp:MOVES[id].pp});await bText(mName(mon)+' learned '+MOVES[id].n+'!')}
+   else{
+    await bText(mName(mon)+' wants to learn '+MOVES[id].n+'! Forget a move?');
+    const opts=mon.moves.map(m=>MOVES[m.id].n).concat(['Skip '+MOVES[id].n]);
+    const c=await showChoice(opts);
+    if(c<4){await bText('Forgot '+MOVES[mon.moves[c].id].n+' and learned '+MOVES[id].n+'!');mon.moves[c]={id,pp:MOVES[id].pp}}
+   }
+  }
+ }
+}
+function pendingEvo(mon){const sp=SPECIES[mon.sp];return sp.ev&&mon.lv>=sp.ev[1]?sp.ev[0]:null}
+async function runEvolutions(){
+ for(const mon of G.party){
+  const to=pendingEvo(mon);
+  if(!to)continue;
+  await showText('What? '+mName(mon)+' is evolving!');
+  const hpFrac=mon.hp/mMax(mon);
+  mon.sp=to;mon.hp=Math.max(1,Math.floor(mMax(mon)*hpFrac));
+  G.seen[to]=1;G.caught[to]=1;
+  // learn any moves at or below current level that are new since evolving? keep: only future levels
+  await showText('Congratulations! It evolved into '+SPECIES[to].n+'!');
+ }
+}
+function tryCatch(foe,ballMult){
+ const cr=SPECIES[foe.sp].cr;
+ const sb=foe.status==='SLP'||foe.status==='FRZ'?2:foe.status?1.5:1;
+ const chance=(cr/255)*(1-(foe.hp/mMax(foe))*2/3)*ballMult*sb;
+ return Math.random()<clamp(chance,0.02,0.95);
+}
+
+/* battle UI helpers (DOM ids defined in shell) */
+const BDISP={bmenu:'grid',bmoves:'grid',btext:'block'};
+function bShow(id,on){document.getElementById(id).style.display=on?(BDISP[id]||'block'):'none'}
+function bText(s){
+ return new Promise(res=>{
+  const el=document.getElementById('btext');
+  bShow('bmenu',false);bShow('bmoves',false);bShow('btext',true);
+  el.classList.remove('blink');el.textContent='';
+  let i=0,done=false;sfx('blip');
+  const iv=setInterval(()=>{i+=2;el.textContent=s.slice(0,i);
+   if(i>=s.length){clearInterval(iv);done=true;el.classList.add('blink')}},16);
+  const fin=()=>{el.classList.remove('blink');el.onclick=null;window.removeEventListener('keydown',kh);ABTN.onA=null;ABTN.onB=null;res()};
+  const h=()=>{if(!done){clearInterval(iv);el.textContent=s;done=true;el.classList.add('blink');return}fin()};
+  const kh=e=>{if(e.key==='z'||e.key==='Z'||e.key==='Enter'||e.key===' '){e.preventDefault();h()}};
+  el.onclick=h;window.addEventListener('keydown',kh);
+  ABTN.onA=h;ABTN.onB=h;
+ });
+}
+function bMenuPick(){
+ return new Promise(res=>{
+  bShow('btext',false);bShow('bmoves',false);bShow('bmenu',true);
+  ABTN.onB=null;
+  const btns=document.querySelectorAll('#bmenu button');
+  btns.forEach((b,i)=>b.onclick=()=>{sfx('sel');btns.forEach(x=>x.onclick=null);res(i)});
+ });
+}
+function bMovePick(mon){
+ return new Promise(res=>{
+  bShow('btext',false);bShow('bmenu',false);bShow('bmoves',true);
+  const box=document.getElementById('bmoves');
+  box.innerHTML='';
+  mon.moves.forEach((m,i)=>{
+   const mv=MOVES[m.id];
+   const b=document.createElement('button');
+   b.innerHTML='<span>'+mv.n+'</span><small style="color:'+TYPE_COLORS[mv.t]+'">'+mv.t+' '+m.pp+'/'+mv.pp+'</small>';
+   b.disabled=m.pp<=0;
+   b.onclick=()=>res(i);
+   box.appendChild(b);
+  });
+  const back=document.createElement('button');back.className='backbtn';back.textContent='\u25c0 Back';back.onclick=()=>{ABTN.onB=null;res(-1)};
+  box.appendChild(back);
+  ABTN.onB=()=>{ABTN.onB=null;res(-1)};
+ });
+}
+
+/* main battle */
+async function battle(opts){
+ B.on=true;B.kind=opts.kind;
+ B.team=opts.kind==='trainer'?opts.team:[opts.foe];
+ B.fi=0;B.foe=B.team[0];
+ let ai=firstAlive();if(ai<0)ai=0;
+ B.ally=G.party[ai];
+ B.aSt={};B.fSt={};B.parts=new Set([ai]);
+ G.seen[B.foe.sp]=1;
+ sfx('sel');setMusic('bt');await battleFlash();
+ const ov=document.getElementById('battle');
+ const g0=curMap().ground||'.';
+ ov.style.background=BBG[g0]||BBG['.'];
+ const PLATC={'.':'radial-gradient(rgba(96,168,84,.85),rgba(58,116,58,.35) 70%)','c':'radial-gradient(rgba(96,80,74,.9),rgba(42,34,42,.35) 70%)',
+  's':'radial-gradient(rgba(224,204,144,.9),rgba(164,142,92,.35) 70%)','i':'radial-gradient(rgba(244,250,255,.95),rgba(172,202,222,.4) 70%)',
+  'v':'radial-gradient(rgba(128,64,52,.9),rgba(62,32,32,.35) 70%)','m':'radial-gradient(rgba(116,106,74,.9),rgba(62,56,42,.35) 70%)',
+  'f':'radial-gradient(rgba(124,134,154,.9),rgba(72,82,102,.35) 70%)'};
+ const pc=PLATC[g0]||PLATC['.'];
+ document.getElementById('foeplat').style.background=pc;
+ document.getElementById('allyplat').style.background=pc;
+ ov.style.display='flex';
+ setSprites();refreshPanels();
+ document.getElementById('bfoename').textContent=opts.kind==='trainer'?opts.name:'Wild '+mName(B.foe);
+ if(opts.kind==='trainer')await bText(opts.name+' challenges you!');
+ else await bText('A wild '+mName(B.foe)+' appeared!'+(B.foe.shiny?' \u2728 It\u2019s SHINY!':opts.legend?' \u2728':''));
+ if(abilityOf(B.foe)==='Daunt'){B.aSt.atk=clamp((B.aSt.atk||0)-1,-6,6);await bText('Foe '+mName(B.foe)+'\u2019s Daunt lowered '+mName(B.ally)+'\u2019s Attack!')}
+ await bText('Go, '+mName(B.ally)+'!');
+ if(abilityOf(B.ally)==='Daunt'){B.fSt.atk=clamp((B.fSt.atk||0)-1,-6,6);await bText(mName(B.ally)+'\u2019s Daunt lowered the foe\u2019s Attack!')}
+ let result={win:false,caught:false,ran:false};
+ try{
+ outer:
+ while(true){
+  B.ally._fln=false;if(B.foe)B.foe._fln=false;
+  // player command
+  let action=null; // {type:'move',i}|{type:'switch',i}|{type:'item',id,target}|{type:'run'}
+  while(!action){
+   const c=await bMenuPick();
+   if(c===0){const mi=await bMovePick(B.ally);if(mi>=0)action={type:'move',i:mi}}
+   else if(c===1){const r=await battleBag();if(r)action=r}
+   else if(c===2){const si=await partyScreen(true);if(si>=0)action={type:'switch',i:si}}
+   else{
+    if(opts.kind==='trainer'){await bText('You can\u2019t run from a trainer battle!')}
+    else action={type:'run'};
+   }
+  }
+  // run
+  if(action.type==='run'){
+   const ch=clamp(.5+(bStat(B.ally,'spe',B.aSt)-bStat(B.foe,'spe',B.fSt))/Math.max(1,bStat(B.foe,'spe',B.fSt))*.3,.3,.95);
+   if(Math.random()<ch){await bText('Got away safely!');result.ran=true;break}
+   await bText('Couldn\u2019t escape!');
+   await foeTurn();if(await checkAllyFaint())break;
+   await endOfTurn();continue;
+  }
+  // item
+  if(action.type==='item'){
+   const it=ITEMS[action.id];
+   G.bag[action.id]--;if(G.bag[action.id]<=0)delete G.bag[action.id];
+   if(it.kind==='ball'){
+    if(opts.kind==='trainer'){await bText('You can\u2019t catch another tamer\u2019s beast!')}
+    else{
+     await bText('You threw a '+it.n+'...');
+     sfx('throwo');await fx('foespr','catchShrink',400,true);
+     await delay(750);
+     if(tryCatch(B.foe,it.mult)){
+      sfx('lvl');
+      await bText('Gotcha! '+mName(B.foe)+' was caught!');
+      G.caught[B.foe.sp]=1;
+      if(G.party.length<6)G.party.push(B.foe);
+      else{G.box.push(B.foe);await bText(mName(B.foe)+' was sent to your storage box.')}
+      result.caught=true;result.win=true;break;
+     }
+     await fx('foespr','popBack',280);
+     document.getElementById('foespr').classList.remove('catchShrink');
+     await bText('Oh no! It broke free!');
+    }
+   }else if(it.kind==='heal'){B.ally.hp=Math.min(mMax(B.ally),B.ally.hp+it.hp);refreshPanels();await bText(mName(B.ally)+' recovered HP!')}
+   else if(it.kind==='status'){B.ally.status=null;refreshPanels();await bText(mName(B.ally)+' was cured!')}
+   else if(it.kind==='revive'){/* handled in battleBag via party pick */}
+   await foeTurn();if(await checkAllyFaint())break;
+   await endOfTurn();continue;
+  }
+  // switch
+  if(action.type==='switch'){
+   await bText('Come back, '+mName(B.ally)+'!');
+   B.ally=G.party[action.i];B.aSt={};B.parts.add(action.i);
+   setSprites();refreshPanels();
+   await bText('Go, '+mName(B.ally)+'!');
+   if(abilityOf(B.ally)==='Daunt'){B.fSt.atk=clamp((B.fSt.atk||0)-1,-6,6);await bText(mName(B.ally)+'\u2019s Daunt lowered the foe\u2019s Attack!')}
+   await foeTurn();if(await checkAllyFaint())break;
+   await endOfTurn();continue;
+  }
+  // move vs move: order
+  const pm=B.ally.moves[action.i];const fm=aiPick(B.foe,B.ally);
+  const pPrio=MOVES[pm.id].prio||0,fPrio=MOVES[fm.id].prio||0;
+  const pFirst=pPrio>fPrio||(pPrio===fPrio&&bStat(B.ally,'spe',B.aSt)>=bStat(B.foe,'spe',B.fSt));
+  const seq=pFirst?['p','f']:['f','p'];
+  for(const who of seq){
+   if(who==='p'){
+    if(B.ally.hp<=0)continue;
+    if(B.ally._fln){await bText(mName(B.ally)+' flinched!');B.ally._fln=false;}
+    else if(await preMove(B.ally,mName(B.ally))){
+     pm.pp=Math.max(0,pm.pp-1);
+     await applyMove(B.ally,B.foe,B.aSt,B.fSt,pm,mName(B.ally),'Foe '+mName(B.foe));
+    }
+    if(B.foe.hp<=0){
+     if(await foeFainted(opts))break outer;
+     if(await checkAllyFaint())break outer;
+     continue;
+    }
+    if(await checkAllyFaint())break outer;
+   }else{
+    if(B.foe.hp<=0)continue;
+    if(B.foe._fln){await bText('Foe '+mName(B.foe)+' flinched!');B.foe._fln=false;}
+    else if(await preMove(B.foe,'Foe '+mName(B.foe))){
+     fm.pp=Math.max(0,fm.pp-1);
+     await applyMove(B.foe,B.ally,B.fSt,B.aSt,fm,'Foe '+mName(B.foe),mName(B.ally));
+    }
+    if(B.foe.hp<=0){
+     if(await foeFainted(opts))break outer;
+     continue;
+    }
+    if(await checkAllyFaint())break outer;
+   }
+  }
+  await endTurnStatus(B.ally,mName(B.ally));
+  if(await checkAllyFaint())break;
+  await endTurnStatus(B.foe,'Foe '+mName(B.foe));
+  if(B.foe.hp<=0){if(await foeFainted(opts))break}
+ }
+ }finally{
+  document.getElementById('battle').style.display='none';
+  B.on=false;
+  setMusic('ow');
+ }
+ await runEvolutions();
+ saveGame();
+ return result;
+
+ async function endOfTurn(){
+  await endTurnStatus(B.ally,mName(B.ally));
+  await endTurnStatus(B.foe,'Foe '+mName(B.foe));
+  if(B.foe.hp<=0)await foeFainted(opts);
+ }
+ async function foeTurn(){
+  if(B.foe.hp<=0)return;
+  const fm=aiPick(B.foe,B.ally);
+  if(await preMove(B.foe,'Foe '+mName(B.foe))){
+   fm.pp=Math.max(0,fm.pp-1);
+   await applyMove(B.foe,B.ally,B.fSt,B.aSt,fm,'Foe '+mName(B.foe),mName(B.ally));
+  }
+ }
+ async function foeFainted(opts){ // returns true if battle over
+  sfx('faint');await fx('foespr','faintDrop',460,true);
+  await bText('Foe '+mName(B.foe)+' fainted!');
+  const parts=[...B.parts].filter(i=>G.party[i]&&G.party[i].hp>0);
+  for(const i of parts)await gainXP(G.party[i],B.foe,opts.kind==='trainer',parts.length);
+  refreshPanels();
+  B.fi++;
+  if(opts.kind==='trainer'&&B.fi<B.team.length){
+   B.foe=B.team[B.fi];B.fSt={};G.seen[B.foe.sp]=1;
+   setSprites();refreshPanels();
+   await bText(opts.name+' sent out '+mName(B.foe)+'!');
+   if(abilityOf(B.foe)==='Daunt'){B.aSt.atk=clamp((B.aSt.atk||0)-1,-6,6);await bText('Foe '+mName(B.foe)+'\u2019s Daunt lowered '+mName(B.ally)+'\u2019s Attack!')}
+   return false;
+  }
+  result.win=true;
+  if(opts.kind==='trainer'){
+   await bText('You defeated '+opts.name+'!');
+   if(opts.winText)await bText(opts.winText);
+   G.money+=opts.prize||0;
+   await bText('You got $'+(opts.prize||0)+' for winning!');
+  }
+  return true;
+ }
+ async function checkAllyFaint(){ // returns true if battle over (loss)
+  if(B.ally.hp>0)return false;
+  sfx('faint');await fx('allyspr','faintDrop',460,true);
+  await bText(mName(B.ally)+' fainted!');
+  if(partyAlive()){
+   const si=await partyScreen(true,true);
+   B.ally=G.party[si];B.aSt={};B.parts.add(si);
+   setSprites();refreshPanels();
+   await bText('Go, '+mName(B.ally)+'!');
+   if(abilityOf(B.ally)==='Daunt'){B.fSt.atk=clamp((B.fSt.atk||0)-1,-6,6);await bText(mName(B.ally)+'\u2019s Daunt lowered the foe\u2019s Attack!')}
+   return false;
+  }
+  await bText('You have no beasts left able to fight!');
+  if(opts.noBlackout){result.win=false;return true}
+  await bText('You blacked out and rushed to the nearest Beast Center...');
+  G.money=Math.floor(G.money/2);
+  G.party.forEach(healMon);
+  G.map=G.lastHeal.map;G.x=G.lastHeal.x;G.y=G.lastHeal.y;G.facing='down';
+  result.win=false;return true;
+ }
+}
+
+/* ============================================================
+   DIALOG / MENUS / SAVE / BOOT
+   ============================================================ */
+const ABTN={onA:null,onB:null};
+function showText(s){
+ return new Promise(res=>{
+  const d=document.getElementById('dlg');
+  d.style.display='block';
+  d.innerHTML='<div class="dlgtext"></div><div class="dlgmore" style="visibility:hidden">\u25bc</div>';
+  const tx=d.querySelector('.dlgtext'),more=d.querySelector('.dlgmore');
+  let i=0,done=false;sfx('blip');
+  const iv=setInterval(()=>{i+=2;tx.textContent=s.slice(0,i);
+   if(i>=s.length){clearInterval(iv);done=true;more.style.visibility='visible'}},16);
+  const fin=()=>{d.onclick=null;window.removeEventListener('keydown',kh);ABTN.onA=null;ABTN.onB=null;d.style.display='none';res()};
+  const h=()=>{if(!done){clearInterval(iv);tx.textContent=s;done=true;more.style.visibility='visible';return}fin()};
+  const kh=e=>{if(e.key==='z'||e.key==='Z'||e.key==='Enter'||e.key===' '){e.preventDefault();h()}};
+  d.onclick=h;window.addEventListener('keydown',kh);ABTN.onA=h;ABTN.onB=h;
+ });
+}
+function showChoice(opts){
+ return new Promise(res=>{
+  const d=document.getElementById('dlg');
+  d.style.display='block';
+  d.innerHTML='<div class="choicebox">'+opts.map((o,i)=>'<button data-i="'+i+'">'+o+'</button>').join('')+'</div>';
+  d.querySelectorAll('button').forEach(b=>b.onclick=e=>{e.stopPropagation();d.style.display='none';res(+b.dataset.i)});
+ });
+}
+function panelList(title,items,opts){
+ opts=opts||{};
+ return new Promise(res=>{
+  const p=document.getElementById('panel');
+  p.style.display='flex';
+  let html='<div class="ptitle">'+title+'</div><div class="plist">';
+  items.forEach((it,i)=>{
+   html+='<button class="pitem" data-i="'+i+'" '+(it.disabled?'disabled':'')+'>'+
+    (it.icon||'')+'<span class="pmain">'+it.label+'</span>'+(it.sub?'<span class="psub">'+it.sub+'</span>':'')+'</button>';
+  });
+  html+='</div>';
+  if(!opts.noBack)html+='<button class="pback">\u25c0 Back</button>';
+  p.innerHTML=html;
+  items.forEach((it,i)=>{
+   if(it.iconCanvas){const slot=p.querySelector('[data-i="'+i+'"]');const cc=it.iconCanvas;cc.className='picon';slot.prepend(cc)}
+  });
+  p.querySelectorAll('.pitem').forEach(b=>b.onclick=()=>{sfx('sel');ABTN.onB=null;p.style.display='none';res(+b.dataset.i)});
+  const bk=p.querySelector('.pback');if(bk)bk.onclick=()=>{ABTN.onB=null;p.style.display='none';res(-1)};
+  ABTN.onB=opts.noBack?null:()=>{ABTN.onB=null;p.style.display='none';res(-1)};
+ });
+}
+function monLabel(m){return mName(m)+' Lv'+m.lv}
+function monSub(m){return'HP '+m.hp+'/'+mMax(m)+(m.status?' ['+m.status+']':'')}
+function miniIcon(spId,shiny){const c=mkCanvas(24,24);const s=monSprite(spId,false,shiny);c.getContext('2d').drawImage(s,4,4,32,32,0,0,24,24);return c}
+
+async function partyScreen(inBattle,forced){
+ while(true){
+  const items=G.party.map((m,i)=>({label:monLabel(m),sub:monSub(m),iconCanvas:miniIcon(m.sp,m.shiny),
+   disabled:inBattle&&(m.hp<=0||m===B.ally)}));
+  const i=await panelList(inBattle?'Choose a beast':'Your party',items,{noBack:forced});
+  if(i<0)return -1;
+  if(inBattle)return i;
+  const m=G.party[i];
+  const c=await panelList(mName(m),[
+   {label:'Summary'},{label:'Move to front'},
+   {label:m.held?'Take '+ITEMS[m.held].n:'Take item',disabled:!m.held}
+  ]);
+  if(c===2&&m.held){
+   G.bag[m.held]=(G.bag[m.held]||0)+1;
+   await showText('Took the '+ITEMS[m.held].n+' from '+mName(m)+'.');
+   m.held=null;saveGame();continue;
+  }
+  if(c===0){
+   const sp=SPECIES[m.sp],st=maxStats(m.sp,m.lv);
+   await showText((m.shiny?'\u2728 ':'')+mName(m)+' \u2014 '+sp.t.join('/')+' \u2014 Lv'+m.lv+'\nAbility: '+abilityOf(m)+'  \u00b7  Held: '+(m.held?ITEMS[m.held].n:'None')+'\nHP '+m.hp+'/'+st.hp+'  ATK '+st.atk+'  DEF '+st.def+'\nSpA '+st.spa+'  SpD '+st.spd+'  SPE '+st.spe);
+   await showText('Moves: '+m.moves.map(mv=>MOVES[mv.id].n+' ('+mv.pp+'/'+MOVES[mv.id].pp+')').join(', '));
+   await showText(sp.dx);
+  }
+  if(c===1&&i>0){G.party.unshift(G.party.splice(i,1)[0]);saveGame()}
+ }
+}
+async function battleBag(){ // returns action or null
+ const ids=Object.keys(G.bag).filter(k=>G.bag[k]>0);
+ if(!ids.length){await bText('Your bag is empty!');return null}
+ const i=await panelList('Bag',ids.map(id=>({label:ITEMS[id].n+' x'+G.bag[id],sub:ITEMS[id].d})));
+ if(i<0)return null;
+ const id=ids[i];const it=ITEMS[id];
+ if(it.kind==='revive'){
+  const fainted=G.party.map((m,j)=>({m,j})).filter(o=>o.m.hp<=0);
+  if(!fainted.length){await bText('No fainted beasts to revive!');return null}
+  const f=await panelList('Revive who?',fainted.map(o=>({label:monLabel(o.m),iconCanvas:miniIcon(o.m.sp,o.m.shiny)})));
+  if(f<0)return null;
+  const m=fainted[f].m;m.hp=Math.floor(mMax(m)/2);m.status=null;
+  await bText(mName(m)+' was revived!');
+  return{type:'item',id};
+ }
+ if(it.kind==='heal'&&B.ally.hp>=mMax(B.ally)){await bText('HP is already full!');return null}
+ if(it.kind==='status'&&!B.ally.status){await bText('No status to cure!');return null}
+ return{type:'item',id};
+}
+async function overworldBag(){
+ while(true){
+  const ids=Object.keys(G.bag).filter(k=>G.bag[k]>0);
+  if(!ids.length){await showText('Your bag is empty.');return}
+  const i=await panelList('Bag  \u2014  $'+G.money,ids.map(id=>({label:ITEMS[id].n+' x'+G.bag[id],sub:ITEMS[id].d})));
+  if(i<0)return;
+  const id=ids[i],it=ITEMS[id];
+  if(it.kind==='ball'){await showText('Orbs can only be used in battle against wild beasts.');continue}
+  if(it.kind==='held'){
+   const t2=await panelList('Give to who?',G.party.map(m2=>({label:monLabel(m2),sub:m2.held?'Holding: '+ITEMS[m2.held].n:'Holding nothing',iconCanvas:miniIcon(m2.sp,m2.shiny)})));
+   if(t2<0)continue;
+   const m2=G.party[t2];
+   if(m2.held)G.bag[m2.held]=(G.bag[m2.held]||0)+1;
+   m2.held=id;G.bag[id]--;if(G.bag[id]<=0)delete G.bag[id];
+   await showText(mName(m2)+' is now holding the '+it.n+'.');
+   saveGame();continue;
+  }
+  const targets=G.party.map((m,j)=>({m,j})).filter(o=>it.kind==='revive'?o.m.hp<=0:o.m.hp>0);
+  if(!targets.length){await showText('No valid target.');continue}
+  const t=await panelList('Use on who?',targets.map(o=>({label:monLabel(o.m),sub:monSub(o.m),iconCanvas:miniIcon(o.m.sp,o.m.shiny)})));
+  if(t<0)continue;
+  const m=targets[t].m;
+  if(it.kind==='heal'){if(m.hp>=mMax(m)){await showText('HP is already full!');continue}m.hp=Math.min(mMax(m),m.hp+it.hp)}
+  if(it.kind==='status'){if(!m.status){await showText('No status to cure!');continue}m.status=null}
+  if(it.kind==='revive'){m.hp=Math.floor(mMax(m)/2);m.status=null}
+  G.bag[id]--;if(G.bag[id]<=0)delete G.bag[id];
+  await showText('Used '+it.n+' on '+mName(m)+'.');
+  saveGame();
+ }
+}
+async function pcMenu(){
+ while(true){
+  const c=await panelList('Beast Storage System',[
+   {label:'Deposit a beast',sub:'Party: '+G.party.length+'/6',disabled:G.party.length<=1},
+   {label:'Withdraw a beast',sub:'Box: '+G.box.length+' stored',disabled:!G.box.length||G.party.length>=6}
+  ]);
+  if(c<0)return;
+  if(c===0){
+   const i=await panelList('Deposit who?',G.party.map(m=>({label:monLabel(m),sub:monSub(m),iconCanvas:miniIcon(m.sp,m.shiny)})));
+   if(i<0)continue;
+   if(G.party.length<=1){await showText('You need at least one beast with you!');continue}
+   const m=G.party.splice(i,1)[0];healMon(m);G.box.push(m);
+   await showText(mName(m)+' was stored (and healed).');
+  }else{
+   const i=await panelList('Withdraw who?',G.box.map(m=>({label:monLabel(m),iconCanvas:miniIcon(m.sp,m.shiny)})));
+   if(i<0)continue;
+   G.party.push(G.box.splice(i,1)[0]);
+   await showText('Welcome back, '+mName(G.party[G.party.length-1])+'!');
+  }
+  saveGame();
+ }
+}
+async function shopMenu(){
+ const stock=['orb','potion'];
+ if(G.badges>=1)stock.push('remedy');
+ if(G.badges>=2)stock.push('greatorb','superpotion');
+ if(G.badges>=3)stock.push('revive','oranberry');
+ if(G.badges>=4)stock.push('mosscharm','powerband','wisplens');
+ if(G.badges>=5)stock.push('ultraorb','hyperpotion');
+ await showText('Clerk: Welcome to the Veridia Mart! Take a look.');
+ while(true){
+  const i=await panelList('Mart  \u2014  $'+G.money,stock.map(id=>({label:ITEMS[id].n+'  $'+ITEMS[id].price,sub:ITEMS[id].d,disabled:G.money<ITEMS[id].price})));
+  if(i<0)return;
+  const id=stock[i];
+  G.money-=ITEMS[id].price;G.bag[id]=(G.bag[id]||0)+1;
+  saveGame();
+ }
+}
+async function dexScreen(){
+ const items=[];
+ for(let i=1;i<SPECIES.length;i++){
+  const seen=G.seen[i],caught=G.caught[i];
+  items.push({label:(caught?'\u25cf ':seen?'\u25cb ':'\u2014 ')+(seen?SPECIES[i].n:'???'),
+   sub:seen?SPECIES[i].t.join('/'):'',iconCanvas:seen?miniIcon(i):null,disabled:!seen});
+ }
+ while(true){
+  const caughtN=Object.keys(G.caught).length,seenN=Object.keys(G.seen).length;
+  const i=await panelList('BeastDex  \u2014 seen '+seenN+' / caught '+caughtN+' of '+(SPECIES.length-1),items);
+  if(i<0)return;
+  await showText('No.'+(i+1)+' '+SPECIES[i+1].n+' \u2014 '+SPECIES[i+1].t.join('/')+'\n'+SPECIES[i+1].dx);
+ }
+}
+async function startMenu(){
+ if(busy)return;busy=true;
+ try{
+  while(true){
+   const c=await panelList('MENU',[
+    {label:'BeastDex'},{label:'Party',disabled:!G.party.length},{label:'Bag'},
+    {label:'Trainer Card'},{label:'Save Game'},{label:'Options'},{label:'Close'}
+   ]);
+   if(c<0||c===6)return;
+   if(c===5){await optionsMenu();continue}
+   if(c===0)await dexScreen();
+   if(c===1)await partyScreen(false);
+   if(c===2)await overworldBag();
+   if(c===3){
+    const mins=Math.floor((G.playMs+(Date.now()-G.playStart))/60000);
+    await showText('TAMER '+G.name.toUpperCase()+'\nBadges: '+G.badges+'/8'+(G.flags.champion?' \u2605 CHAMPION':'')+'\nMoney: $'+G.money+'\nPlay time: '+Math.floor(mins/60)+'h '+(mins%60)+'m'+(G.spireBest?'\nBattle Spire best: '+G.spireBest:''));
+   }
+   if(c===4){await saveGame(true);await showText('Game saved!')}
+  }
+ }finally{busy=false}
+}
+
+async function optionsMenu(){
+ while(true){
+  const c=await panelList('OPTIONS',[
+   {label:'Sound FX: '+(G.sfx===false?'Off':'On')},
+   {label:'Music: '+(G.music===false?'Off':'On')},
+   {label:'View: '+(G.flat?'Classic (flat)':'Tilted 3D')},
+   {label:'Day/Night Tint: '+(G.tint===false?'Off':'On')},
+   {label:'Export Save Code',sub:'Copy your save to back it up or move devices'},
+   {label:'Import Save Code',sub:'Paste a save code to restore progress'}
+  ]);
+  if(c<0)return;
+  if(c===0)G.sfx=G.sfx===false?true:false;
+  if(c===1){G.music=G.music===false?true:false;if(G.music===false)setMusic(null);else{musName=null;setMusic(B.on?'bt':'ow')}}
+  if(c===2)G.flat=!G.flat;
+  if(c===3)G.tint=G.tint===false?true:false;
+  if(c===4)await exportSave();
+  if(c===5)await importSave();
+  saveGame(true);
+ }
+}
+async function exportSave(){
+ const code=btoa(unescape(encodeURIComponent(JSON.stringify(G))));
+ let ok=false;
+ try{await navigator.clipboard.writeText(code);ok=true}catch(e){}
+ if(!ok){
+  try{
+   const ta=document.createElement('textarea');ta.value=code;
+   document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();ok=true;
+  }catch(e){}
+ }
+ await showText(ok?'Save code copied to clipboard! Paste it somewhere safe \u2014 notes app, email, anywhere.':'Couldn\u2019t reach the clipboard. Try again, or screenshot your progress.');
+}
+async function importSave(){
+ return new Promise(res=>{
+  const p=document.getElementById('panel');
+  p.style.display='flex';
+  p.innerHTML='<div class="ptitle">Paste save code</div>'+
+   '<textarea id="impbox" placeholder="Paste your save code here..." style="flex:1;background:#0e151c;color:#e8e4d8;border:1px solid #c9a85c;border-radius:4px;font:inherit;font-size:10px;padding:6px"></textarea>'+
+   '<button class="pback" id="impgo">Load Save</button><button class="pback" id="impcancel">Cancel</button>';
+  document.getElementById('impcancel').onclick=()=>{p.style.display='none';res()};
+  document.getElementById('impgo').onclick=async()=>{
+   let msg;
+   try{
+    const v=document.getElementById('impbox').value.trim();
+    const data=JSON.parse(decodeURIComponent(escape(atob(v))));
+    if(!data.party||!data.map||!WORLD[data.map])throw 0;
+    G=data;G.playStart=Date.now();
+    msg='Save loaded! Welcome back, '+G.name+'.';
+    saveGame(true);
+   }catch(e){msg='That code didn\u2019t work. Double-check you copied the whole thing.'}
+   p.style.display='none';
+   await showText(msg);
+   res();
+  };
+ });
+}
+
+/* ----- save / load ----- */
+let saveTimer=0;
+async function saveGame(force){
+ if(!G)return;
+ G.playMs=G.playMs+(Date.now()-G.playStart);G.playStart=Date.now();
+ const now=Date.now();
+ if(!force&&now-saveTimer<1500)return; // debounce
+ saveTimer=now;
+ try{
+  if(window.storage)await window.storage.set('veridia-save',JSON.stringify(G));
+  else localStorage.setItem('veridia-save',JSON.stringify(G));
+ }catch(e){console.warn('save failed',e)}
+}
+async function loadSave(){
+ try{
+  if(window.storage){const r=await window.storage.get('veridia-save');return r&&r.value?JSON.parse(r.value):null}
+  const s=localStorage.getItem('veridia-save');return s?JSON.parse(s):null;
+ }catch(e){return null}
+}
+
+/* ----- input ----- */
+function wireInput(){
+ window.addEventListener('contextmenu',e=>e.preventDefault());
+ document.addEventListener('selectstart',e=>{const tg=e.target&&e.target.tagName;if(tg!=='INPUT'&&tg!=='TEXTAREA')e.preventDefault()});
+ document.addEventListener('dragstart',e=>e.preventDefault());
+ const keymap={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',w:'up',s:'down',a:'left',d:'right'};
+ window.addEventListener('keydown',e=>{
+  if(keymap[e.key]){e.preventDefault();input.held[keymap[e.key]]=1;input.dir=keymap[e.key]}
+  if(e.key==='x'||e.key==='X'){if(ABTN.onB){e.preventDefault();ABTN.onB();return}}
+  if(e.key==='Shift'||e.key==='x'||e.key==='X')input.run=true;
+  if((e.key==='z'||e.key==='Z')&&!busy)interact();
+  if(e.key==='Enter'&&!busy&&G)startMenu();
+ });
+ window.addEventListener('keyup',e=>{
+  if(e.key==='Shift'||e.key==='x'||e.key==='X')input.run=false;
+  if(keymap[e.key]){delete input.held[keymap[e.key]];
+   input.dir=Object.keys(input.held)[0]||null}
+ });
+ document.querySelectorAll('.dbtn').forEach(b=>{
+  const d=b.dataset.dir;
+  const on=e=>{e.preventDefault();input.dir=d;b.classList.add('on')};
+  const off=e=>{e.preventDefault();if(input.dir===d)input.dir=null;b.classList.remove('on')};
+  b.addEventListener('pointerdown',on);b.addEventListener('pointerup',off);
+  b.addEventListener('pointerleave',off);b.addEventListener('pointercancel',off);
+ });
+ document.getElementById('btnA').addEventListener('pointerdown',e=>{
+  e.preventDefault();
+  if(ABTN.onA)ABTN.onA();else if(!busy)interact();
+ });
+ const bb=document.getElementById('btnB');
+ bb.addEventListener('pointerdown',e=>{e.preventDefault();if(ABTN.onB){ABTN.onB();return}input.run=true});
+ const bOff=e=>{input.run=false};
+ bb.addEventListener('pointerup',bOff);bb.addEventListener('pointerleave',bOff);bb.addEventListener('pointercancel',bOff);
+ document.getElementById('btnStart').addEventListener('pointerdown',e=>{
+  e.preventDefault();if(!busy&&G)startMenu();
+ });
+}
+
+/* ----- HUD ----- */
+let lastMapName='';
+if(typeof window!=='undefined')setInterval(()=>{
+ if(!G)return;
+ const n=curMap().name||'';
+ if(n!==lastMapName){lastMapName=n;const el=document.getElementById('mapname');if(el)el.textContent=n}
+},300);
+
+/* ----- title / boot ----- */
+async function title(){
+ const t=document.getElementById('title');
+ t.style.display='flex';
+ const save=await loadSave();
+ const btns=document.getElementById('titlebtns');
+ btns.innerHTML='';
+ const mk=(label,fn)=>{const b=document.createElement('button');b.textContent=label;b.onclick=fn;btns.appendChild(b)};
+ if(save)mk('CONTINUE  \u2014  '+save.name+', '+save.badges+' badge'+(save.badges===1?'':'s'),async()=>{
+  G=save;G.playStart=Date.now();t.style.display='none';
+  if(!G.party.length)G.party.push(makeMon(G.flags.starter||1,5));
+  setMusic('ow');
+ });
+ mk('NEW GAME',async()=>{
+  const inp=document.getElementById('nameinput');
+  if(inp.style.display!=='block'){inp.style.display='block';inp.focus();return}
+  const name=(inp.value||'Tamer').slice(0,10);
+  G=newGame(name);
+  t.style.display='none';
+  if(save){try{if(window.storage)await window.storage.set('veridia-save',JSON.stringify(G));else localStorage.setItem('veridia-save',JSON.stringify(G))}catch(e){}}
+  busy=true;
+  await showText('Welcome to VERIDIA, '+name+'! Your house is in Dawnpetal Town. Professor Maple\u2019s lab is the big building \u2014 she has a gift for you.');
+  await showText('Controls: D-pad to walk \u00b7 A to talk/confirm \u00b7 START for menu. Walk into the lab to begin!');
+  busy=false;
+  setMusic('ow');
+  saveGame(true);
+ });
+}
+async function boot(){
+ cvs=document.getElementById('screen');
+ ctx=cvs.getContext('2d');ctx.imageSmoothingEnabled=false;
+ buildTiles();buildAnimTiles();buildTreetops();buildWorld();wireInput();
+ try{if('serviceWorker'in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{})}catch(e){}
+ requestAnimationFrame(loop);
+ title();
+}
+
+/* ----- data validation (node) ----- */
+function validateData(){
+ for(let i=1;i<SPECIES.length;i++){
+  const s=SPECIES[i];
+  for(const[lv,id]of s.ls)if(!MOVES[id])throw new Error(s.n+' bad move '+id);
+  if(s.ev&&!SPECIES[s.ev[0]])throw new Error(s.n+' bad evo');
+ }
+ const teams=[].concat(GYMS.map(g=>g.team),ELITE.map(e=>e.team),[CHAMPION.team],[rivalTeam(0,1),rivalTeam(1,4),rivalTeam(2,7),rivalTeam(3,1)]);
+ for(const t of teams)for(const[sp,lv]of t)if(!SPECIES[sp])throw new Error('bad team species '+sp);
+ buildWorld();
+ for(const id in WORLD){
+  const m=WORLD[id];
+  for(const k in m.warps){const w=m.warps[k];const tgt=w.to||w.out;if(!WORLD[tgt])throw new Error(id+' bad warp '+tgt)}
+  for(const side in m.exits){if(m.exits[side]&&!WORLD[m.exits[side]])throw new Error(id+' bad exit '+m.exits[side])}
+  if(m.enc)for(const e of m.enc)if(!SPECIES[e[0]])throw new Error(id+' bad encounter '+e[0]);
+  for(const n of m.npcs){
+   if(n.trainer)for(const[sp]of n.trainer.team)if(!SPECIES[sp])throw new Error(id+' bad trainer species '+sp);
+   if(n.kind==='item'&&!ITEMS[n.item])throw new Error(id+' bad item '+n.item);
+   if(n.kind==='legend'&&!SPECIES[n.leg.sp])throw new Error(id+' bad legend '+n.leg.sp);
+  }
+ }
+ return true;
+}
+
+
+/* ============================================================
+   V2 EXPANSION — NEW MOVES & SPECIES
+   ============================================================ */
+Object.assign(MOVES,{
+ faespark:{n:'Fae Spark',t:'Fairy',c:'S',p:40,a:100,pp:25},
+ pixiewind:{n:'Pixie Wind',t:'Fairy',c:'S',p:60,a:100,pp:20},
+ moonforce:{n:'Moonforce',t:'Fairy',c:'S',p:95,a:100,pp:10},
+ roughtumble:{n:'Rough Tumble',t:'Fairy',c:'P',p:90,a:90,pp:10},
+ charm:{n:'Charm',t:'Fairy',c:'X',a:100,pp:20,chg:[['atk',-2,'foe']]},
+ headbutt:{n:'Headbutt',t:'Normal',c:'P',p:70,a:100,pp:15,st:['FLN',30]},
+ slash:{n:'Slash',t:'Normal',c:'P',p:70,a:100,pp:20,hc:1},
+ furyswipes:{n:'Fury Swipes',t:'Normal',c:'P',p:18,a:80,pp:15,multi:[2,5]},
+ wildtackle:{n:'Wild Tackle',t:'Normal',c:'P',p:90,a:100,pp:15,recoil:.25},
+ omegaray:{n:'Omega Ray',t:'Normal',c:'S',p:130,a:90,pp:5},
+ bladedance:{n:'Blade Dance',t:'Normal',c:'X',pp:15,chg:[['atk',2,'self']]},
+ cinderhex:{n:'Cinder Hex',t:'Fire',c:'X',a:85,pp:15,st:['BRN',100]},
+ magmasurge:{n:'Magma Surge',t:'Fire',c:'S',p:80,a:100,pp:15,st:['BRN',30]},
+ blazetackle:{n:'Blaze Tackle',t:'Fire',c:'P',p:110,a:100,pp:10,recoil:.33},
+ clawhammer:{n:'Claw Hammer',t:'Water',c:'P',p:100,a:90,pp:10,hc:1},
+ verdantsiphon:{n:'Verdant Siphon',t:'Grass',c:'S',p:75,a:100,pp:10,drain:.5},
+ bramblewhip:{n:'Bramble Whip',t:'Grass',c:'P',p:110,a:85,pp:10},
+ voltslam:{n:'Volt Slam',t:'Electric',c:'P',p:100,a:100,pp:10,recoil:.25},
+ arcfield:{n:'Arc Field',t:'Electric',c:'S',p:80,a:100,pp:15,st:['PAR',30]},
+ frostshard:{n:'Frost Shard',t:'Ice',c:'P',p:40,a:100,pp:25,prio:1},
+ iciclevolley:{n:'Icicle Volley',t:'Ice',c:'P',p:25,a:100,pp:20,multi:[2,5]},
+ machkick:{n:'Mach Kick',t:'Fighting',c:'P',p:40,a:100,pp:25,prio:1},
+ siphonfist:{n:'Siphon Fist',t:'Fighting',c:'P',p:75,a:100,pp:10,drain:.5},
+ alloutstrike:{n:'All-Out Strike',t:'Fighting',c:'P',p:120,a:100,pp:5,chg:[['def',-1,'self'],['spd',-1,'self']]},
+ toxicslash:{n:'Toxic Slash',t:'Poison',c:'P',p:70,a:100,pp:15,hc:1,st:['PSN',10]},
+ gunklob:{n:'Gunk Lob',t:'Poison',c:'P',p:120,a:80,pp:5},
+ drilldive:{n:'Drill Dive',t:'Ground',c:'P',p:80,a:95,pp:10,hc:1},
+ skytackle:{n:'Sky Tackle',t:'Flying',c:'P',p:120,a:100,pp:8,recoil:.33},
+ windrazor:{n:'Wind Razor',t:'Flying',c:'S',p:60,a:95,pp:20,hc:1},
+ lullaby:{n:'Lullaby',t:'Psychic',c:'X',a:60,pp:15,st:['SLP',100]},
+ zenslam:{n:'Zen Slam',t:'Psychic',c:'P',p:80,a:90,pp:10},
+ quicken:{n:'Quicken',t:'Psychic',c:'X',pp:20,chg:[['spe',2,'self']]},
+ sapbite:{n:'Sap Bite',t:'Bug',c:'P',p:70,a:100,pp:10,drain:.5},
+ needlevolley:{n:'Needle Volley',t:'Bug',c:'P',p:25,a:95,pp:20,multi:[2,5]},
+ wingwaltz:{n:'Wing Waltz',t:'Bug',c:'X',pp:10,chg:[['spa',1,'self'],['spd',1,'self'],['spe',1,'self']]},
+ pebblevolley:{n:'Pebble Volley',t:'Rock',c:'P',p:25,a:90,pp:15,multi:[2,5]},
+ relicpulse:{n:'Relic Pulse',t:'Rock',c:'S',p:60,a:100,pp:15},
+ shadestep:{n:'Shade Step',t:'Ghost',c:'P',p:40,a:100,pp:25,prio:1},
+ spook:{n:'Spook',t:'Ghost',c:'P',p:30,a:100,pp:15,st:['FLN',30]},
+ drakefang:{n:'Drake Fang',t:'Dragon',c:'P',p:45,a:90,pp:15,multi:[2,2]},
+ cheapshot:{n:'Cheap Shot',t:'Dark',c:'P',p:55,a:100,pp:15,prio:1},
+ nighthowl:{n:'Night Howl',t:'Dark',c:'X',a:100,pp:20,chg:[['atk',-1,'foe'],['spa',-1,'foe']]},
+ scheme:{n:'Scheme',t:'Dark',c:'X',pp:15,chg:[['spa',2,'self']]},
+ steeljab:{n:'Steel Jab',t:'Steel',c:'P',p:40,a:100,pp:25,prio:1},
+ cometfist:{n:'Comet Fist',t:'Steel',c:'P',p:90,a:90,pp:10},
+ fortify:{n:'Fortify',t:'Steel',c:'X',pp:15,chg:[['def',2,'self']]}
+});
+
+SPECIES.push(
+ /* 44 */{n:'Mothel',t:['Bug'],b:[40,30,35,45,40,40],cr:255,bx:52,ev:[45,12],a:'bird',
+  ls:[[1,'tackle'],[5,'bugbite'],[9,'faespark']],
+  dx:'A dusty little moth drawn to lantern light. Its wing powder smells faintly sweet.'},
+ /* 45 */{n:'Glimmoth',t:['Bug','Fairy'],b:[65,50,60,95,85,80],cr:90,bx:160,ev:null,a:'bird',
+  ls:[[1,'tackle'],[5,'bugbite'],[9,'faespark'],[14,'pixiewind'],[20,'gust'],[27,'swarmstrike'],[33,'moonforce'],[40,'wingwaltz']],
+  dx:'Its wings scatter glittering scales that grant pleasant dreams to sleeping travelers.'},
+ /* 46 */{n:'Faylit',t:['Fairy'],b:[45,35,45,62,60,58],cr:200,bx:62,ev:[47,24],a:'blob',
+  ls:[[1,'faespark'],[1,'growl'],[8,'charm'],[14,'pixiewind'],[22,'mend'],[30,'moonforce']],
+  dx:'A mote of living light. It hides in flower bells and giggles when found.'},
+ /* 47 */{n:'Sylphara',t:['Fairy','Flying'],b:[70,55,68,100,95,92],cr:70,bx:188,ev:null,a:'bird',
+  ls:[[1,'faespark'],[1,'growl'],[8,'charm'],[14,'pixiewind'],[24,'wingstrike'],[28,'mend'],[34,'moonforce'],[42,'skydive']],
+  dx:'Rides the high winds on ribbon-like wings. Storms calm where Sylphara passes.'},
+ /* 48 */{n:'Acornid',t:['Grass'],b:[50,60,55,35,40,30],cr:220,bx:60,ev:[49,18],a:'blob',
+  ls:[[1,'tackle'],[1,'harden'],[7,'vinelash'],[13,'leafcutter'],[19,'headbutt'],[26,'verdantsiphon']],
+  dx:'An acorn with stubby legs. It headbutts trees to knock down snacks.'},
+ /* 49 */{n:'Oakanid',t:['Grass'],b:[70,80,75,45,55,40],cr:120,bx:142,ev:[50,32],a:'quad',
+  ls:[[1,'tackle'],[1,'harden'],[7,'vinelash'],[13,'leafcutter'],[19,'headbutt'],[26,'verdantsiphon'],[32,'slam']],
+  dx:'Bark plates harden across its back each season. It charges like a battering ram.'},
+ /* 50 */{n:'Eldergrove',t:['Grass','Ghost'],b:[90,95,90,75,80,45],cr:60,bx:235,ev:null,a:'biped',
+  ls:[[1,'tackle'],[1,'harden'],[7,'vinelash'],[13,'leafcutter'],[19,'headbutt'],[26,'verdantsiphon'],[34,'hexpulse'],[40,'spiritburst'],[46,'bramblewhip']],
+  dx:'An ancient tree inhabited by a forest spirit. Lost hikers wake at the woods\u2019 edge unharmed.'},
+ /* 51 */{n:'Buzzlet',t:['Bug','Electric'],b:[40,45,40,58,45,70],cr:200,bx:58,ev:[52,22],a:'bird',
+  ls:[[1,'tackle'],[6,'spark'],[11,'bugbite'],[17,'staticwave'],[23,'needlevolley'],[29,'voltlash'],[36,'swarmstrike'],[43,'thundercrash']],
+  dx:'A static-charged wasp. Its wingbeats crackle audibly on dry days.'},
+ /* 52 */{n:'Voltwasp',t:['Bug','Electric'],b:[60,70,55,92,65,105],cr:75,bx:178,ev:null,a:'bird',
+  ls:[[1,'tackle'],[6,'spark'],[11,'bugbite'],[17,'staticwave'],[23,'needlevolley'],[29,'voltlash'],[36,'swarmstrike'],[43,'thundercrash']],
+  dx:'Swarms of Voltwasp light up the forest canopy like heat lightning at dusk.'},
+ /* 53 */{n:'Echobat',t:['Poison','Flying'],b:[42,48,38,42,40,68],cr:255,bx:54,ev:[54,22],a:'bird',
+  ls:[[1,'gust'],[6,'toxicsting'],[12,'bite'],[18,'wingstrike'],[25,'toxicslash'],[31,'venomblast'],[38,'skydive']],
+  dx:'It maps pitch-black tunnels with rapid clicks. Crowds of them roost upside down.'},
+ /* 54 */{n:'Sonarex',t:['Poison','Flying'],b:[70,78,62,68,62,102],cr:90,bx:172,ev:null,a:'bird',
+  ls:[[1,'gust'],[6,'toxicsting'],[12,'bite'],[18,'wingstrike'],[25,'toxicslash'],[31,'venomblast'],[38,'skydive']],
+  dx:'Its shriek can shatter stalactites. Miners follow its calls to find safe passages.'},
+ /* 55 */{n:'Glowble',t:['Rock'],b:[48,55,80,45,55,28],cr:190,bx:62,ev:[56,26],a:'blob',
+  ls:[[1,'tackle'],[1,'harden'],[8,'rockthrow'],[15,'relicpulse'],[22,'faespark'],[29,'stonespike'],[36,'fortify'],[43,'moonforce']],
+  dx:'A pebble beast with a faint inner light. It dims when frightened.'},
+ /* 56 */{n:'Prismox',t:['Rock','Fairy'],b:[70,65,110,90,95,40],cr:70,bx:190,ev:null,a:'quad',
+  ls:[[1,'tackle'],[1,'harden'],[8,'rockthrow'],[15,'relicpulse'],[22,'faespark'],[29,'stonespike'],[36,'fortify'],[43,'moonforce']],
+  dx:'Crystal growths along its spine split lamplight into dancing rainbows.'},
+ /* 57 */{n:'Stalagmaw',t:['Rock','Dark'],b:[65,90,95,45,55,35],cr:75,bx:170,ev:null,a:'quad',
+  ls:[[1,'bite'],[8,'rockthrow'],[16,'duskslash'],[24,'pebblevolley'],[32,'stonespike'],[40,'cheapshot']],
+  dx:'It mimics a stalagmite for days, then snaps shut on anything that wanders close.'},
+ /* 58 */{n:'Drillby',t:['Ground','Steel'],b:[45,70,70,30,40,45],cr:180,bx:66,ev:[59,30],a:'quad',
+  ls:[[1,'scratch'],[1,'harden'],[9,'mudshot'],[16,'ironclaw'],[23,'drilldive'],[30,'steelram'],[38,'seismicslam'],[45,'fortify']],
+  dx:'Its nose cone spins fast enough to bore through granite. It naps in its own tunnels.'},
+ /* 59 */{n:'Drillgon',t:['Ground','Steel'],b:[78,105,100,45,55,65],cr:60,bx:200,ev:null,a:'quad',
+  ls:[[1,'scratch'],[1,'harden'],[9,'mudshot'],[16,'ironclaw'],[23,'drilldive'],[30,'steelram'],[38,'seismicslam'],[45,'fortify']],
+  dx:'Old mine shafts across Veridia are said to be the work of a single tireless Drillgon.'},
+ /* 60 */{n:'Mudlet',t:['Water','Ground'],b:[55,55,50,45,45,35],cr:220,bx:58,ev:[61,20],a:'blob',
+  ls:[[1,'tackle'],[7,'mudshot'],[13,'hydropulse'],[19,'harden'],[25,'quakepulse'],[32,'tidalwave'],[40,'seismicslam']],
+  dx:'A cheerful glob of living mud. It burbles happily in warm shallows.'},
+ /* 61 */{n:'Mireking',t:['Water','Ground'],b:[95,85,80,60,70,45],cr:90,bx:182,ev:null,a:'biped',
+  ls:[[1,'tackle'],[7,'mudshot'],[13,'hydropulse'],[19,'harden'],[25,'quakepulse'],[32,'tidalwave'],[40,'seismicslam']],
+  dx:'It rules the marsh from a throne of roots. The bog ripples when it stirs.'},
+ /* 62 */{n:'Gloomcap',t:['Grass','Poison'],b:[50,45,50,60,55,30],cr:210,bx:60,ev:[63,23],a:'blob',
+  ls:[[1,'tackle'],[6,'toxicsting'],[12,'leechdrain'],[18,'sleepspore'],[24,'verdantsiphon'],[31,'venomblast'],[38,'petalstorm']],
+  dx:'A mushroom beast that sprouts after rain. Its cap glows a queasy violet at night.'},
+ /* 63 */{n:'Toadshade',t:['Grass','Poison'],b:[75,65,70,90,80,45],cr:90,bx:176,ev:null,a:'biped',
+  ls:[[1,'tackle'],[6,'toxicsting'],[12,'leechdrain'],[18,'sleepspore'],[24,'verdantsiphon'],[31,'venomblast'],[38,'petalstorm']],
+  dx:'The great cap on its back shelters smaller beasts from rain \u2014 for a price in snacks.'},
+ /* 64 */{n:'Wispurn',t:['Ghost','Poison'],b:[55,40,50,85,70,75],cr:80,bx:168,ev:null,a:'ghost',
+  ls:[[1,'hexpulse'],[9,'toxicsting'],[17,'cinderhex'],[25,'phantomstrike'],[33,'venomblast'],[41,'spiritburst']],
+  dx:'A drifting marsh-light said to be the lantern of a traveler who never came home.'},
+ /* 65 */{n:'Scarabit',t:['Bug','Ground'],b:[45,65,60,30,35,40],cr:210,bx:60,ev:[66,24],a:'quad',
+  ls:[[1,'tackle'],[1,'harden'],[8,'bugbite'],[15,'mudshot'],[22,'needlevolley'],[29,'drilldive'],[36,'swarmstrike'],[44,'seismicslam']],
+  dx:'It rolls perfect spheres of sand across the dunes. No one knows why.'},
+ /* 66 */{n:'Scarabrute',t:['Bug','Ground'],b:[72,100,95,40,55,58],cr:80,bx:184,ev:null,a:'quad',
+  ls:[[1,'tackle'],[1,'harden'],[8,'bugbite'],[15,'mudshot'],[22,'needlevolley'],[29,'drilldive'],[36,'swarmstrike'],[44,'seismicslam']],
+  dx:'Its horn can flip a wagon. Desert caravans pay it tribute in sweet fruit.'},
+ /* 67 */{n:'Vipset',t:['Poison','Dark'],b:[40,58,40,48,40,62],cr:200,bx:58,ev:[68,26],a:'serpent',
+  ls:[[1,'scratch'],[7,'toxicsting'],[13,'bite'],[19,'toxin'],[26,'toxicslash'],[33,'cheapshot'],[40,'venomblast'],[47,'gunklob']],
+  dx:'A sand-swimming serpent. Only its eyes break the surface as it hunts at dusk.'},
+ /* 68 */{n:'Cobrage',t:['Poison','Dark'],b:[65,90,60,72,60,98],cr:75,bx:180,ev:null,a:'serpent',
+  ls:[[1,'scratch'],[7,'toxicsting'],[13,'bite'],[19,'toxin'],[26,'toxicslash'],[33,'cheapshot'],[40,'venomblast'],[47,'gunklob']],
+  dx:'Its hood bears a pattern like an angry face. The real face is worse.'},
+ /* 69 */{n:'Sandsylph',t:['Ground','Fairy'],b:[70,60,65,85,80,70],cr:70,bx:175,ev:null,a:'ghost',
+  ls:[[1,'faespark'],[8,'mudshot'],[16,'charm'],[24,'pixiewind'],[32,'quakepulse'],[40,'moonforce']],
+  dx:'A playful spirit of the dunes that builds sandcastles overnight and abandons them at dawn.'},
+ /* 70 */{n:'Cactill',t:['Grass'],b:[48,60,52,40,42,35],cr:200,bx:60,ev:[71,28],a:'biped',
+  ls:[[1,'vinelash'],[1,'harden'],[9,'needlevolley'],[16,'leechdrain'],[23,'jab'],[30,'verdantsiphon'],[37,'powerkick'],[44,'bramblewhip']],
+  dx:'A squat cactus with a fighter\u2019s stance. It shadowboxes the sunrise every morning.'},
+ /* 71 */{n:'Saguarrior',t:['Grass','Fighting'],b:[75,100,72,55,62,62],cr:75,bx:182,ev:null,a:'biped',
+  ls:[[1,'vinelash'],[1,'harden'],[9,'needlevolley'],[16,'leechdrain'],[23,'jab'],[30,'verdantsiphon'],[37,'powerkick'],[44,'bramblewhip']],
+  dx:'Its needle-covered fists strike like maces. It trains by punching boulders to gravel.'},
+ /* 72 */{n:'Crablet',t:['Water'],b:[45,65,58,35,40,42],cr:220,bx:58,ev:[73,25],a:'quad',
+  ls:[[1,'tidaljab'],[1,'harden'],[8,'jab'],[15,'hydropulse'],[22,'furyswipes'],[29,'clawhammer'],[36,'powerkick'],[44,'titanfist']],
+  dx:'It waves its big claw at the tide as if challenging the whole ocean.'},
+ /* 73 */{n:'Pinchlord',t:['Water','Fighting'],b:[72,105,85,50,55,60],cr:80,bx:186,ev:null,a:'biped',
+  ls:[[1,'tidaljab'],[1,'harden'],[8,'jab'],[15,'hydropulse'],[22,'furyswipes'],[29,'clawhammer'],[36,'powerkick'],[44,'titanfist']],
+  dx:'Its hammer-claw can crack a ship\u2019s hull. It bows politely before every duel.'},
+ /* 74 */{n:'Gullwing',t:['Water','Flying'],b:[42,45,40,52,45,68],cr:255,bx:54,ev:[75,26],a:'bird',
+  ls:[[1,'gust'],[6,'tidaljab'],[12,'wingstrike'],[19,'hydropulse'],[26,'windrazor'],[33,'skydive'],[40,'tidalwave'],[47,'skytackle']],
+  dx:'A bold shore bird. It will steal a sandwich straight from your hands.'},
+ /* 75 */{n:'Stormgull',t:['Water','Flying'],b:[68,62,58,88,68,108],cr:90,bx:178,ev:null,a:'bird',
+  ls:[[1,'gust'],[6,'tidaljab'],[12,'wingstrike'],[19,'hydropulse'],[26,'windrazor'],[33,'skydive'],[40,'tidalwave'],[47,'skytackle']],
+  dx:'Sailors watch its flight to read coming weather. It surfs gale fronts for fun.'},
+ /* 76 */{n:'Jellille',t:['Water','Poison'],b:[55,40,42,62,68,48],cr:210,bx:58,ev:[77,28],a:'ghost',
+  ls:[[1,'tidaljab'],[7,'toxicsting'],[14,'hydropulse'],[21,'toxin'],[28,'venomblast'],[35,'tidalwave'],[42,'gunklob']],
+  dx:'A drifting bell of jelly. Its sting tingles like static and smells of citrus.'},
+ /* 77 */{n:'Medusoom',t:['Water','Poison'],b:[85,55,58,92,98,60],cr:80,bx:184,ev:null,a:'ghost',
+  ls:[[1,'tidaljab'],[7,'toxicsting'],[14,'hydropulse'],[21,'toxin'],[28,'venomblast'],[35,'tidalwave'],[42,'gunklob']],
+  dx:'Its trailing ribbons paralyze whole schools of fish. It glows softly before storms.'},
+ /* 78 */{n:'Frostfawn',t:['Ice','Fairy'],b:[48,42,45,60,58,55],cr:200,bx:60,ev:[79,30],a:'quad',
+  ls:[[1,'tackle'],[1,'growl'],[8,'frostnip'],[15,'faespark'],[22,'icelance'],[29,'charm'],[36,'moonforce'],[43,'glacialstorm']],
+  dx:'Snow falls gently wherever this shy fawn walks, even under a clear sky.'},
+ /* 79 */{n:'Cervglace',t:['Ice','Fairy'],b:[75,62,68,98,92,82],cr:70,bx:190,ev:null,a:'quad',
+  ls:[[1,'tackle'],[1,'growl'],[8,'frostnip'],[15,'faespark'],[22,'icelance'],[29,'charm'],[36,'moonforce'],[43,'glacialstorm']],
+  dx:'Its antlers are living ice that refreezes when broken. Auroras gather above its herd.'},
+ /* 80 */{n:'Hailite',t:['Ice','Rock'],b:[55,70,85,45,50,25],cr:190,bx:64,ev:[81,33],a:'blob',
+  ls:[[1,'tackle'],[1,'harden'],[9,'frostnip'],[16,'rockthrow'],[23,'iciclevolley'],[30,'pebblevolley'],[37,'fortify'],[44,'glacialstorm']],
+  dx:'A boulder of ancient hail packed around a stone heart. It rolls downhill to travel.'},
+ /* 81 */{n:'Glacioth',t:['Ice','Rock'],b:[85,100,115,55,65,35],cr:60,bx:200,ev:null,a:'biped',
+  ls:[[1,'tackle'],[1,'harden'],[9,'frostnip'],[16,'rockthrow'],[23,'iciclevolley'],[30,'pebblevolley'],[37,'fortify'],[44,'glacialstorm']],
+  dx:'A glacier given legs. Its slow footsteps carve valleys over centuries.'},
+ /* 82 */{n:'Lumifox',t:['Ice','Psychic'],b:[65,50,60,95,85,90],cr:70,bx:178,ev:null,a:'quad',
+  ls:[[1,'frostnip'],[10,'mindjab'],[18,'quicken'],[26,'icelance'],[34,'psybeam'],[42,'glacialstorm'],[50,'mindcrush']],
+  dx:'Its nine-colored tail paints auroras across the night. Seeing one brings good luck.'},
+ /* 83 */{n:'Magmite',t:['Fire','Rock'],b:[50,68,75,55,48,30],cr:190,bx:64,ev:[84,32],a:'blob',
+  ls:[[1,'tackle'],[1,'harden'],[8,'ember'],[15,'rockthrow'],[22,'magmasurge'],[29,'stonespike'],[36,'blazeburst'],[44,'blazetackle']],
+  dx:'A pebble with a molten core. It sleeps in volcanic gravel, indistinguishable from stones.'},
+ /* 84 */{n:'Magmaul',t:['Fire','Rock'],b:[80,105,108,72,60,42],cr:60,bx:198,ev:null,a:'biped',
+  ls:[[1,'tackle'],[1,'harden'],[8,'ember'],[15,'rockthrow'],[22,'magmasurge'],[29,'stonespike'],[36,'blazeburst'],[44,'blazetackle']],
+  dx:'Its fists are hammers of cooling lava. Each punch leaves glowing prints in stone.'},
+ /* 85 */{n:'Ashling',t:['Fire','Ghost'],b:[40,45,42,72,55,60],cr:200,bx:58,ev:[86,34],a:'ghost',
+  ls:[[1,'ember'],[7,'shadowjab'],[13,'cinderhex'],[19,'hexpulse'],[26,'magmasurge'],[33,'phantomstrike'],[40,'spiritburst'],[47,'blazeburst']],
+  dx:'Born from the last ember of a dying campfire. It follows hikers, craving stories.'},
+ /* 86 */{n:'Pyrewraith',t:['Fire','Ghost'],b:[62,60,58,108,82,92],cr:65,bx:194,ev:null,a:'ghost',
+  ls:[[1,'ember'],[7,'shadowjab'],[13,'cinderhex'],[19,'hexpulse'],[26,'magmasurge'],[33,'phantomstrike'],[40,'spiritburst'],[47,'blazeburst']],
+  dx:'A robe of cold violet flame. Whatever it burns leaves no ash \u2014 only silence.'},
+ /* 87 */{n:'Emberfly',t:['Bug','Fire'],b:[44,52,40,62,45,66],cr:200,bx:58,ev:[88,30],a:'bird',
+  ls:[[1,'bugbite'],[6,'ember'],[12,'needlevolley'],[18,'wingstrike'],[25,'magmasurge'],[32,'swarmstrike'],[39,'wingwaltz'],[46,'blazeburst']],
+  dx:'Swarms of them drift on volcanic updrafts like sparks that refuse to die.'},
+ /* 88 */{n:'Blazewing',t:['Bug','Fire'],b:[66,72,58,98,68,100],cr:75,bx:182,ev:null,a:'bird',
+  ls:[[1,'bugbite'],[6,'ember'],[12,'needlevolley'],[18,'wingstrike'],[25,'magmasurge'],[32,'swarmstrike'],[39,'wingwaltz'],[46,'blazeburst']],
+  dx:'Its wingbeats fan cinders into firestorms. It molts in lava pools.'},
+ /* 89 */{n:'Gemling',t:['Rock','Psychic'],b:[50,52,75,62,68,32],cr:180,bx:64,ev:[90,38],a:'blob',
+  ls:[[1,'tackle'],[1,'harden'],[9,'rockthrow'],[16,'mindjab'],[23,'relicpulse'],[30,'psybeam'],[37,'stonespike'],[45,'mindcrush']],
+  dx:'A thinking geode. It hums quiet thoughts that make nearby people drowsy.'},
+ /* 90 */{n:'Crystalisk',t:['Rock','Psychic'],b:[78,72,110,98,95,45],cr:60,bx:202,ev:null,a:'quad',
+  ls:[[1,'tackle'],[1,'harden'],[9,'rockthrow'],[16,'mindjab'],[23,'relicpulse'],[30,'psybeam'],[37,'stonespike'],[45,'mindcrush']],
+  dx:'A lattice of living crystal that bends light and minds alike. It dreams in geometry.'},
+ /* 91 */{n:'Nocthowl',t:['Psychic','Flying'],b:[52,40,42,62,58,66],cr:230,bx:56,ev:[92,31],a:'bird',
+  ls:[[1,'gust'],[1,'growl'],[7,'mindjab'],[14,'wingstrike'],[21,'lullaby'],[28,'psybeam'],[35,'skydive'],[42,'mindcrush']],
+  dx:'It remembers every face it sees. Its midnight song untangles worried thoughts.'},
+ /* 92 */{n:'Strigyx',t:['Psychic','Flying'],b:[76,55,62,98,88,96],cr:75,bx:186,ev:null,a:'bird',
+  ls:[[1,'gust'],[1,'growl'],[7,'mindjab'],[14,'wingstrike'],[21,'lullaby'],[28,'psybeam'],[35,'skydive'],[42,'mindcrush']],
+  dx:'A great owl that hunts by reading dreams. Liars cannot meet its gaze.'},
+ /* 93 */{n:'Pompuff',t:['Normal','Fairy'],b:[55,45,42,52,55,48],cr:235,bx:56,ev:[94,25],a:'blob',
+  ls:[[1,'tackle'],[1,'charm'],[8,'faespark'],[15,'quickstrike'],[22,'headbutt'],[29,'pixiewind'],[36,'slam'],[43,'moonforce']],
+  dx:'A round puff of cloud-soft fur. Hugging one is said to cure a bad day.'},
+ /* 94 */{n:'Pompadame',t:['Normal','Fairy'],b:[85,62,65,80,92,68],cr:90,bx:180,ev:null,a:'biped',
+  ls:[[1,'tackle'],[1,'charm'],[8,'faespark'],[15,'quickstrike'],[22,'headbutt'],[29,'pixiewind'],[36,'slam'],[43,'moonforce']],
+  dx:'It grooms its magnificent coat for hours and guards its tamer like royalty.'},
+ /* 95 */{n:'Thornling',t:['Grass','Dark'],b:[48,62,45,42,40,58],cr:190,bx:60,ev:[96,35],a:'quad',
+  ls:[[1,'scratch'],[7,'vinelash'],[13,'bite'],[19,'needlevolley'],[26,'duskslash'],[33,'verdantsiphon'],[40,'bramblewhip'],[47,'umbralwave']],
+  dx:'A bramble cat that prowls hedgerows. Its thorns snag wool, feathers and secrets.'},
+ /* 96 */{n:'Bramblash',t:['Grass','Dark'],b:[70,102,68,62,58,88],cr:70,bx:190,ev:null,a:'quad',
+  ls:[[1,'scratch'],[7,'vinelash'],[13,'bite'],[19,'needlevolley'],[26,'duskslash'],[33,'verdantsiphon'],[40,'bramblewhip'],[47,'umbralwave']],
+  dx:'Its tail is a whip of barbed vine. It stalks the treeline at the edge of lantern light.'},
+ /* 97 */{n:'Voltadpole',t:['Electric','Water'],b:[45,40,42,62,50,58],cr:230,bx:56,ev:[98,33],a:'fish',
+  ls:[[1,'tidaljab'],[6,'spark'],[12,'hydropulse'],[18,'staticwave'],[25,'voltlash'],[32,'tidalwave'],[39,'arcfield'],[46,'thundercrash']],
+  dx:'Ponds where it lives tingle to the touch. Its tail glows when rain is coming.'},
+ /* 98 */{n:'Ampphibian',t:['Electric','Water'],b:[72,58,62,100,75,92],cr:80,bx:184,ev:null,a:'biped',
+  ls:[[1,'tidaljab'],[6,'spark'],[12,'hydropulse'],[18,'staticwave'],[25,'voltlash'],[32,'tidalwave'],[39,'arcfield'],[46,'thundercrash']],
+  dx:'It stores a thundercloud\u2019s charge in its chest. Its croak rattles windows.'},
+ /* 99 */{n:'Raptorock',t:['Rock','Dragon'],b:[72,95,80,55,58,80],cr:65,bx:180,ev:null,a:'biped',
+  ls:[[1,'scratch'],[1,'growl'],[10,'rockthrow'],[18,'drakefang'],[26,'pebblevolley'],[34,'drakeclaw'],[42,'stonespike'],[50,'drakeroar']],
+  dx:'A living fossil from the deep caves. Its kind hunted these lands before the towns rose.'},
+ /* 100 */{n:'Kitsette',t:['Fire','Fairy'],b:[42,40,40,66,58,62],cr:220,bx:58,ev:[101,30],a:'quad',
+  ls:[[1,'scratch'],[1,'charm'],[8,'ember'],[15,'faespark'],[22,'quickstrike'],[29,'magmasurge'],[36,'moonforce'],[43,'blazeburst']],
+  dx:'A fox kit with a flame like candlelight on each tail-tip. It adores being admired.'},
+ /* 101 */{n:'Vulpyre',t:['Fire','Fairy'],b:[68,58,60,102,88,96],cr:70,bx:192,ev:null,a:'quad',
+  ls:[[1,'scratch'],[1,'charm'],[8,'ember'],[15,'faespark'],[22,'quickstrike'],[29,'magmasurge'],[36,'moonforce'],[43,'blazeburst']],
+  dx:'Its dancing fires charm rather than burn \u2014 until it stops dancing.'},
+ /* 102 */{n:'Serpentide',t:['Water','Dragon'],b:[78,88,72,92,75,95],cr:60,bx:195,ev:null,a:'serpent',
+  ls:[[1,'tidaljab'],[10,'bite'],[18,'drakefang'],[26,'hydropulse'],[34,'drakeroar'],[42,'tidalwave'],[50,'sovereignblast']],
+  dx:'A sea drake glimpsed once a generation. Fishing crews leave offerings at the breakwater.'},
+ /* 103 */{n:'Chronelle',t:['Psychic','Fairy'],b:[105,85,100,120,115,95],cr:3,bx:300,ev:null,a:'ghost',
+  ls:[[1,'faespark'],[1,'mindjab'],[1,'lullaby'],[1,'calmfocus'],[60,'moonforce'],[65,'mindcrush']],
+  dx:'MYTHICAL. It sleeps outside time in the oldest grove. A second in its presence lasts a season.'}
+);
+
+/* ============================================================
+   V2 EXPANSION — BIOME GENERATOR & NEW WORLD
+   ============================================================ */
+function makeBiome(id,seed,cfg){
+ const W2=15,H=34,rng=mulberry32(3000+seed);
+ const K={
+  forest:{base:'.',wall:'T',patch:'G',deco:[['T',26],[',',10],['R',3]],ground:'.'},
+  cave:{cave:true,ground:'c'},
+  marsh:{base:'m',wall:'T',patch:'h',deco:[['Y',10],['W',8],['R',4]],ground:'m'},
+  desert:{base:'s',wall:'d',patch:'u',deco:[['d',10],['R',5],['Y',3]],ground:'s'},
+  coast:{base:'s',wall:'T',patch:'w',deco:[['R',5]],coast:true,ground:'s'},
+  snow:{base:'i',wall:'J',patch:'n',deco:[['J',14],['R',5]],ground:'i'},
+  volcano:{base:'v',wall:'k',patch:'v',deco:[['l',10],['R',6],['q',4]],ground:'v'}
+ }[cfg.kind];
+ let g;const pathX=[];
+ if(K.cave){
+  g=blank(W2,H,'k');
+  let x=7;
+  for(let y=H-1;y>=0;y--){
+   pathX[y]=x;
+   for(let i=-1;i<=1;i++){const xx=x+i;if(xx>0&&xx<W2-1)g[y][xx]='c'}
+   if(y%3===0&&y>2&&y<H-3)x=clamp(x+rint(rng,-1,1),3,W2-4);
+  }
+  for(let r2=0;r2<4;r2++){
+   const ry=rint(rng,4,H-7);const rx=clamp(pathX[ry]+pick(rng,[-4,4]),1,W2-5);
+   for(let j=ry;j<ry+3;j++)for(let i=rx;i<rx+4;i++)if(j>0&&j<H-1&&i>0&&i<W2-1)g[j][i]='c';
+  }
+  for(let i=0;i<14;i++){
+   const cx2=rint(rng,1,W2-2),cy2=rint(rng,1,H-2);
+   if(g[cy2][cx2]==='k'&&(g[cy2][cx2-1]==='c'||g[cy2][cx2+1]==='c'||(g[cy2-1]&&g[cy2-1][cx2]==='c')||(g[cy2+1]&&g[cy2+1][cx2]==='c')))g[cy2][cx2]='p';
+  }
+  for(let i=0;i<6;i++){
+   const cx2=rint(rng,2,W2-3),cy2=rint(rng,2,H-3);
+   if(g[cy2][cx2]==='c'&&Math.abs(cx2-pathX[cy2])>1)g[cy2][cx2]='R';
+  }
+ }else{
+  g=blank(W2,H,K.base);
+  rect(g,0,0,1,H,K.wall);rect(g,W2-1,0,1,H,K.wall);
+  if(K.coast){rect(g,0,0,2,H,'W');rect(g,2,0,2,H,'w')}
+  let x=8;
+  for(let y=H-1;y>=0;y--){
+   pathX[y]=x;g[y][x]=K.base;if(x>1)g[y][x-1]=K.base;
+   if(y%3===0&&y>2&&y<H-3)x=clamp(x+rint(rng,-1,1),K.coast?5:3,W2-4);
+  }
+  for(let i=0;i<8;i++){
+   const gx=rint(rng,K.coast?4:2,W2-5),gy=rint(rng,2,H-6),gw=rint(rng,2,4),gh=rint(rng,2,3);
+   for(let j=gy;j<gy+gh;j++)for(let k2=gx;k2<gx+gw;k2++)if(g[j]&&g[j][k2]===K.base)g[j][k2]=K.patch;
+  }
+  for(const fy of[12,23]){
+   for(let j=fy;j<fy+2;j++)for(let k2=1;k2<W2-1;k2++)if(!SOLID[g[j][k2]]&&g[j][k2]!=='W')g[j][k2]=K.patch;
+  }
+  for(const[ch,n]of K.deco)for(let i=0;i<n;i++){
+   const dx2=rint(rng,K.coast?4:2,W2-3),dy2=rint(rng,2,H-3);
+   if(g[dy2][dx2]===K.base&&Math.abs(dx2-pathX[dy2])>1)g[dy2][dx2]=ch;
+  }
+ }
+ // exits
+ const tpx=pathX[2]!==undefined?pathX[2]:7,bpx=pathX[H-3]!==undefined?pathX[H-3]:7;
+ if(cfg.n){for(const row of[0,1])for(let i=-1;i<=1;i++){const xx=clamp(tpx+i,1,W2-2);g[row][xx]=K.cave?'c':K.base}}
+ else rect(g,0,0,W2,1,K.cave?'k':K.wall);
+ if(cfg.s){for(const row of[H-1,H-2])for(let i=-1;i<=1;i++){const xx=clamp(bpx+i,1,W2-2);g[row][xx]=K.cave?'c':K.base}}
+ else rect(g,0,H-1,W2,1,K.cave?'k':K.wall);
+ const m={id,grid:g,name:cfg.name,enc:cfg.enc,npcs:[],warps:{},exits:{n:cfg.n,s:cfg.s},signs:{},ground:K.ground};
+ // sign
+ const sy=H-3,sx=clamp(pathX[sy]+2,1,W2-2);
+ g[sy][sx]='S';m.signs[wk(sx,sy)]=cfg.name;
+ // trainers beside the corridor
+ (cfg.trainers||[]).forEach((tr,i,arr)=>{
+  const at=tr.at!==undefined?tr.at:(arr.length===1?0.5:0.3+i*(0.45/(arr.length-1)));
+  const ty=clamp(Math.floor(H*at),2,H-3);const px=pathX[ty];
+  const side=(i%2===0)?1:-1;const tx=clamp(px+2*side,1,W2-2);
+  g[ty][tx]=K.cave?'c':K.base;
+  const mid=clamp(px+side,1,W2-2);
+  if(SOLID[g[ty][mid]])g[ty][mid]=K.cave?'c':K.base;
+  m.npcs.push({x:tx,y:ty,kind:'trainer',pal:tr.pal??2,face:side===1?'left':'right',range:3,trainer:tr});
+ });
+ // field items
+ (cfg.items||[]).forEach((it,i)=>{
+  const ty=clamp(Math.floor(H*it[1]),2,H-3);const px=pathX[ty];
+  const side=(i%2===0)?-2:2;const tx=clamp(px+side,1,W2-2);
+  g[ty][tx]=K.cave?'c':K.base;
+  const mid=clamp(px+(side>0?1:-1),1,W2-2);
+  if(SOLID[g[ty][mid]])g[ty][mid]=K.cave?'c':K.base;
+  m.npcs.push({kind:'item',x:tx,y:ty,item:it[0],flag:'itm_'+id+'_'+i});
+ });
+ (cfg.extras||[]).forEach(n=>{
+  if(n.at!==undefined){const ty=clamp(Math.floor(H*n.at),2,H-3);n.x=pathX[ty];n.y=ty;}
+  m.npcs.push(n);
+ });
+ return finishMap(m);
+}
+
+function buildWorld(){
+ /* home town */
+ (function(){
+  const g=blank(17,13,'.');
+  rect(g,0,0,17,1,'T');rect(g,0,12,17,1,'T');rect(g,0,0,1,13,'T');rect(g,16,0,1,13,'T');
+  rect(g,7,0,3,13,'-');
+  const dL=putBuilding(g,2,3,6,4);
+  putBuilding(g,11,3,4,4);
+  g[8][12]='S';
+  for(const[x,y]of[[3,9],[5,10],[13,9],[14,10],[4,2]])if(g[y][x]==='.')g[y][x]=',';
+  const m={id:'home',grid:g,name:'Dawnpetal Town',town:true,ground:'.',heal:{x:8,y:10},
+   npcs:[{x:4,y:9,kind:'npc',pal:6,face:'down',dialog:'Mom: Professor Maple was looking for you! Her lab is just there. Be safe out there, sweetheart.'}],
+   warps:{},exits:{n:'r1'},signs:{[wk(12,8)]:'Dawnpetal Town \u2014 Where journeys bloom.'}};
+  m.warps[wk(dL.x,dL.y)]={to:'lab',x:4,y:6};
+  makeLab('lab','home');
+  finishMap(m);
+ })();
+
+ const chain=['home','r1','f1','c0','r2','c1','r3','k1','c2','m1','c3','r4','d1','c4','o1','c5','s1','c6','v1','c7','r5','k2','league'];
+ const nOf=id=>chain[chain.indexOf(id)+1],sOf=id=>chain[chain.indexOf(id)-1];
+
+ const towns=[
+  {name:'Pebbleton',motto:'A town set in stone.',chat:'Rock-type beasts shrug off Normal moves. Grass and Water crack them right open!'},
+  {name:'Bloomfield',motto:'The garden city.',chat:'Flora\u2019s garden gym is lovely... until the vines grab you. Fire types love it here.'},
+  {name:'Volton',motto:'The current never stops.',chat:'Static Wave paralyzes! Keep a Remedy handy when you face Ampere.'},
+  {name:'Misthollow',motto:'Mind the fog.',chat:'Ghosts can\u2019t touch Normal types... and Normal can\u2019t touch them. Spooky, right?'},
+  {name:'Fortcrest',motto:'Strength honors strength.',chat:'Titus does push-ups between battles. Flying and Psychic moves humble him.'},
+  {name:'Frostvale',motto:'The white silence.',chat:'A dragon of the aurora sleeps in the snowfield north of here... appearing only to Champions.'},
+  {name:'Ironforge',motto:'Hammered, never broken.',chat:'Steel resists almost everything. Bring Fire, Fighting, or Ground \u2014 or bring patience.'},
+  {name:'Drakemont',motto:'The dragon\u2019s doorstep.',chat:'Beyond here lies the last road, then Victory Road\u2019s caves, then the League. Eight badges or turn back.'}
+ ];
+
+ const routes={
+  r1:{name:'Route 1',enc:[[12,35,2,4],[10,35,2,4],[14,20,2,3],[93,10,3,4]],
+   trainers:[T('Youth Finn',[[12,4]],160,'My Nibbit and I train every day!','Aww, nuts!','Keep at it!','r1t1')],
+   extras:[{kind:'rival',pal:7,face:'down',stage:0,at:0.5}]},
+  r2:{name:'Route 2',enc:[[17,30,8,11],[10,25,8,10],[39,25,8,11],[93,15,8,10],[13,5,10,11]],
+   trainers:[T('Hiker Bo',[[17,9],[39,9]],360,'These rocks are my friends!','My friends!!','Rock solid!','r2t1'),
+             T('Lass Mia',[[93,10]],400,'My Pompuff is softer than yours!','Hmph! Still softest.','So fluffy~','r2t2')]},
+  r3:{name:'Route 3',enc:[[19,30,12,15],[97,25,12,14],[91,25,12,15],[12,15,12,13],[36,5,13,15]],
+   trainers:[T('Camper Joel',[[97,13],[12,13]],520,'Caught anything good lately?','You caught me off guard!','Happy camping!','r3t1'),
+             T('Engineer Kit',[[19,14]],560,'Sparkit! Zap zap!','Zap... zapped.','Bzzt!','r3t2')]},
+  r4:{name:'Route 4',enc:[[34,30,21,24],[23,25,21,24],[100,20,21,23],[36,15,21,23],[91,10,22,24]],
+   trainers:[T('Brawler Max',[[23,22],[100,22]],880,'Fists first, questions later!','Question: ow?','One more round!','r4t1'),
+             T('Psychic Lou',[[34,23],[91,23]],920,'I foresaw this battle...','...but not this result.','As foreseen!','r4t2')]},
+  r5:{name:'Route 5',enc:[[29,25,37,41],[89,25,37,40],[95,20,37,40],[24,15,37,40],[37,15,38,41]],
+   trainers:[T('Tamer Rho',[[95,39],[89,39]],1560,'Only dragon-hearted tamers pass!','Pass, dragon-heart.','The mountain judges!','r5t1'),
+             T('Ace Vic',[[24,40],[96,40]],1600,'Everyone here is League-bound. Most go home.','Go on. The League awaits.','Home you go!','r5t2')]}
+ };
+ for(const rid in routes){
+  const rc=routes[rid];rc.s=sOf(rid);rc.n=nOf(rid);
+  makeRoute(+rid.slice(1),rc);
+ }
+
+ const biomes={
+  f1:{kind:'forest',name:'Verdant Forest',
+   enc:[[44,30,4,7],[46,20,4,6],[48,25,4,7],[51,15,5,7],[15,8,5,6],[95,2,6,7]],
+   trainers:[T('Bug Catcher Theo',[[44,6],[14,6]],240,'My moths love the lantern light!','Lights out for me...','Flutter on!','f1t1'),
+             T('Picnicker May',[[46,7]],280,'A fairy landed in my picnic basket!','My sandwiches, my pride... gone.','Want a snack?','f1t2')],
+   items:[['potion',0.3],['orb',0.55],['mosscharm',0.8]],
+   extras:[{kind:'legend',pal:0,at:0.08,leg:{sp:103,lv:65,flag:'leg103'}}]},
+  k1:{kind:'cave',name:'Mt. Hollow',
+   enc:[[53,35,14,17],[55,25,14,17],[17,15,14,16],[58,15,15,17],[57,8,15,17],[99,2,16,17]],
+   trainers:[T('Spelunker Gus',[[53,15],[55,15]],600,'The dark doesn\u2019t scare me!','It does now!','Watch your step!','k1t1'),
+             T('Miner Dot',[[58,16]],640,'My Drillby digs faster than yours!','Dug my own grave there...','Keep digging!','k1t2')],
+   items:[['superpotion',0.25],['greatorb',0.6]],
+   extras:[{kind:'legend',pal:0,at:0.08,leg:{sp:42,lv:60,flag:'leg42'}}]},
+  m1:{kind:'marsh',name:'Murkfen Marsh',
+   enc:[[60,30,17,21],[62,25,17,20],[38,20,17,21],[64,15,18,21],[36,10,17,19]],
+   trainers:[T('Mystic Iva',[[64,19],[62,19]],760,'The marsh-lights whisper your name...','...and now they laugh at me.','Whooo...','m1t1'),
+             T('Fisher Pip',[[60,20]],800,'Best mud in Veridia, right here!','Mud in my eye...','Squelch on!','m1t2')],
+   items:[['remedy',0.4],['oranberry',0.65]],
+   extras:[{kind:'rival',pal:7,face:'down',stage:1,at:0.5}]},
+  d1:{kind:'desert',name:'Sunscorch Desert',
+   enc:[[65,30,24,28],[67,25,24,27],[70,25,24,28],[39,10,24,26],[40,8,26,28],[69,2,26,28]],
+   trainers:[T('Ranger Sue',[[65,26],[70,26]],1040,'I protect these dunes!','Protect... yourself first, Sue.','Drink water!','d1t1'),
+             T('Drifter Cole',[[67,27]],1080,'The desert teaches patience.','Lesson learned.','Wander well.','d1t2')],
+   items:[['superpotion',0.3],['revive',0.7]]},
+  o1:{kind:'coast',name:'Gullshore Coast',
+   enc:[[72,30,27,31],[74,25,27,30],[76,20,27,31],[32,15,27,29],[33,8,29,31],[102,2,30,31]],
+   trainers:[T('Sailor Brig',[[72,29],[74,29]],1160,'I\u2019ve battled on every sea!','Capsized!','Fair winds!','o1t1'),
+             T('Swimmer Ann',[[76,30],[32,30]],1200,'The shallows are MY turf!','Glub...','Watch the jellies!','o1t2')],
+   items:[['greatorb',0.4],['powerband',0.7]]},
+  s1:{kind:'snow',name:'Whiteout Snowfield',
+   enc:[[78,30,31,35],[80,25,31,34],[25,20,31,33],[26,10,33,35],[82,5,33,35]],
+   trainers:[T('Skier Lena',[[78,33],[80,33]],1320,'Cold never bothered my beasts!','Brrr-utal...','Wax your skis!','s1t1'),
+             T('Mystic Noor',[[82,34]],1360,'The aurora fox showed me visions!','Visions of defeat, apparently.','Look up tonight.','s1t2')],
+   items:[['hyperpotion',0.4],['wisplens',0.7]],
+   extras:[{kind:'legend',pal:0,at:0.08,leg:{sp:41,lv:60,flag:'leg41'}}]},
+  v1:{kind:'volcano',name:'Cinder Path',
+   enc:[[83,30,34,38],[85,25,34,37],[87,25,34,38],[18,12,34,36],[84,8,36,38]],
+   trainers:[T('Smith Ada',[[83,36],[27,36]],1440,'I forge my own team!','Back to the forge...','Strike while hot!','v1t1'),
+             T('Blaze Fan Rio',[[85,37],[87,37]],1480,'Feel the heat yet?!','I\u2019m all burned out...','Stay fired up!','v1t2')],
+   items:[['revive',0.3],['ultraorb',0.7]],
+   extras:[{kind:'rival',pal:7,face:'down',stage:2,at:0.5}]},
+  k2:{kind:'cave',name:'Victory Road',
+   enc:[[30,25,41,45],[28,20,41,44],[54,20,41,44],[90,15,42,45],[81,12,42,45],[59,8,43,45]],
+   trainers:[T('Ace Nora',[[81,43],[54,43]],1720,'Last test before the summit!','You\u2019re ready.','Not yet!','k2t1'),
+             T('Veteran Oda',[[90,44],[59,44]],1760,'Forty years I\u2019ve guarded this road.','The road is yours now.','Experience wins!','k2t2')],
+   items:[['hyperpotion',0.2],['ultraorb',0.5],['revive',0.8]],
+   extras:[{kind:'legend',pal:0,at:0.06,leg:{sp:43,lv:62,flag:'leg43'}}]}
+ };
+ let bseed=0;
+ for(const bid in biomes){
+  const bc=biomes[bid];bc.s=sOf(bid);bc.n=nOf(bid);
+  makeBiome(bid,++bseed,bc);
+ }
+
+ towns.forEach((tc,i)=>{
+  tc.s=sOf('c'+i);tc.n=nOf('c'+i);
+  makeTown(i,tc);
+ });
+
+ /* league hall */
+ (function(){
+  const g=blank(15,12,'f');rect(g,0,0,15,1,'X');
+  rect(g,0,0,1,12,'b');rect(g,14,0,1,12,'b');rect(g,0,11,15,1,'b');
+  rect(g,7,11,1,1,'M');
+  rect(g,3,3,2,2,'C');rect(g,10,3,2,2,'C');
+  const m={id:'league',grid:g,name:'Summit Hall',indoor:true,oob:'X',ground:'f',heal:{x:7,y:9},
+   npcs:[
+    {x:7,y:2,kind:'league',pal:3,face:'down'},
+    {x:2,y:6,kind:'rival',pal:7,face:'right',stage:3},
+    {x:12,y:6,kind:'spire',pal:4,face:'left'},
+    {x:11,y:2,kind:'nurse',pal:6,face:'down'}
+   ],warps:{}};
+  m.warps[wk(7,11)]={out:'k2',edge:'n'};
+  finishMap(m);
+ })();
+}
+
+if(typeof window!=='undefined'){window.addEventListener('load',boot)}
+else{validateData();console.log('DATA OK: '+(SPECIES.length-1)+' species, '+Object.keys(MOVES).length+' moves, '+Object.keys(WORLD).length+' maps')}
+
+</script>
+</body>
+</html>
